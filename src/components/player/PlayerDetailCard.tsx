@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Player, PersonalOverride } from "@/lib/types";
 import { depthChartLabel } from "@/lib/handcuff";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 import Badge from "./Badge";
 
 export default function PlayerDetailCard({
@@ -43,12 +44,20 @@ export default function PlayerDetailCard({
         aria-label={`${player.name} details`}
       >
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs text-text-secondary uppercase tracking-wide">
-              {player.position} · {player.team}
-              {player.byeWeek ? ` · Bye ${player.byeWeek}` : ""}
-            </p>
-            <h2 className="font-display text-2xl font-semibold">{player.name}</h2>
+          <div className="flex items-center gap-3 min-w-0">
+            <span
+              className="text-sm font-semibold w-10 h-10 shrink-0 flex items-center justify-center rounded"
+              style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
+            >
+              {player.position}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs text-text-secondary uppercase tracking-wide">
+                {player.team}
+                {player.byeWeek ? ` · Bye ${player.byeWeek}` : ""}
+              </p>
+              <h2 className="font-display text-2xl font-semibold truncate">{player.name}</h2>
+            </div>
           </div>
           <button type="button" className="btn-secondary text-sm shrink-0" onClick={onClose}>
             Close
