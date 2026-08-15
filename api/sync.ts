@@ -2,8 +2,14 @@ import { pullBackup, pushBackup } from "./_lib/syncStore";
 
 // Already gated by middleware.ts's Basic Auth (matches every route) —
 // no separate auth here, same as api/adp.ts.
-export const config = { runtime: "edge" };
-
+//
+// Node.js runtime (the default — no `config.runtime = "edge"` here),
+// unlike api/adp.ts. @vercel/blob's package directly imports Node
+// built-ins (crypto, stream, undici) with no Edge-runtime export
+// condition declared, so bundling it for Edge fails at build time.
+// Node's runtime still supports this same Web-standard
+// Request/Response handler shape, so the code otherwise looks identical
+// to the Edge functions in this project.
 export default async function handler(request: Request): Promise<Response> {
   const result =
     request.method === "GET"
