@@ -13,6 +13,7 @@ import { loadColumnSettings, visibleOrderedColumns } from "@/lib/columnSettings"
 import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
+import FilterMenu from "@/components/draftBoard/FilterMenu";
 import ConfirmDraftSheet from "@/components/draftBoard/ConfirmDraftSheet";
 import DraftLogPanel from "@/components/draftBoard/DraftLogPanel";
 import ScarcityMeter from "@/components/draftBoard/ScarcityMeter";
@@ -298,30 +299,16 @@ export default function DraftBoard() {
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={hideDrafted} onChange={(e) => setHideDrafted(e.target.checked)} />
-          Hide drafted
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={hideOutIR} onChange={(e) => setHideOutIR(e.target.checked)} />
-          Hide Out/IR
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={rookiesOnly} onChange={(e) => setRookiesOnly(e.target.checked)} />
-          Rookies only
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={winningTeamOnly} onChange={(e) => setWinningTeamOnly(e.target.checked)} />
-          Winning teams only
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} />
-          Favorites only
-        </label>
-        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
-          <input type="checkbox" checked={hideDoNotDraft} onChange={(e) => setHideDoNotDraft(e.target.checked)} />
-          Hide do-not-draft
-        </label>
+        <FilterMenu
+          options={[
+            { key: "hideDrafted", label: "Hide drafted", checked: hideDrafted, onChange: setHideDrafted },
+            { key: "hideOutIR", label: "Hide Out/IR", checked: hideOutIR, onChange: setHideOutIR },
+            { key: "rookiesOnly", label: "Rookies only", checked: rookiesOnly, onChange: setRookiesOnly },
+            { key: "winningTeamOnly", label: "Winning teams only", checked: winningTeamOnly, onChange: setWinningTeamOnly },
+            { key: "favoritesOnly", label: "Favorites only", checked: favoritesOnly, onChange: setFavoritesOnly },
+            { key: "hideDoNotDraft", label: "Hide do-not-draft", checked: hideDoNotDraft, onChange: setHideDoNotDraft }
+          ]}
+        />
       </div>
 
       <div className="flex-1 min-h-0">
