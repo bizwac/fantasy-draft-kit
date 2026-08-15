@@ -1,4 +1,5 @@
 import type { RosterState } from "@/lib/rosterTracker";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 const CATEGORY_LABEL: Record<string, string> = {
   QB: "QB", RB: "RB", WR: "WR", TE: "TE", K: "K", DST: "DST",
@@ -46,6 +47,15 @@ export default function RosterPanel({ roster, onClose }: { roster: RosterState; 
               </span>
               {slot.player ? (
                 <>
+                  <span
+                    className="text-xs font-semibold w-8 shrink-0 text-center rounded px-1 py-0.5"
+                    style={{
+                      backgroundColor: POSITION_COLOR[slot.player.position],
+                      color: POSITION_TEXT_COLOR[slot.player.position]
+                    }}
+                  >
+                    {slot.player.position}
+                  </span>
                   <span className="flex-1 min-w-0 truncate font-medium">{slot.player.name}</span>
                   <span className="text-xs text-text-secondary">{slot.player.byeWeek ? `Bye ${slot.player.byeWeek}` : ""}</span>
                 </>
