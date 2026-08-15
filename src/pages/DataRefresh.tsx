@@ -6,6 +6,7 @@ import { parseCsvFile, applyColumnMapping, type ProjectionColumnMapping } from "
 import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshStatus } from "@/lib/refreshStatus";
 import type { ScoringFormat } from "@/lib/types";
 import { db } from "@/lib/db";
+import PreDraftChecklist from "@/components/dataRefresh/PreDraftChecklist";
 
 const TEAM_OPTIONS = [8, 10, 12, 14];
 const SCORING_OPTIONS: Array<{ value: ScoringFormat; label: string }> = [
@@ -121,6 +122,8 @@ export default function DataRefresh() {
         }}
         lastImportAt={status.lastProjectionsImportAt}
       />
+
+      <PreDraftChecklist />
     </div>
   );
 }

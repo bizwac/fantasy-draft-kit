@@ -53,7 +53,11 @@ export default defineConfig(({ command }) => ({
         // (see src/lib/dataSources/refresh.ts), written only after full
         // validation, so a bad refresh can't clobber good cached data.
         globPatterns: ["**/*.{js,css,html,woff2,png,svg,ico}"],
-        navigateFallbackDenylist: [/^\/api\//]
+        navigateFallbackDenylist: [/^\/api\//],
+        // Versioned precache + purge old caches on activate (spec §7b.5)
+        // so a bad deploy can't strand the user on stale cached code.
+        cleanupOutdatedCaches: true,
+        clientsClaim: true
       }
     })
   ],
