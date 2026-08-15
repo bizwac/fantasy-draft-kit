@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Player } from "@/lib/types";
 import PlayerRow from "./PlayerRow";
+import PlayerListHeader from "./PlayerListHeader";
 
 const ROW_HEIGHT = 52;
 
@@ -37,48 +38,49 @@ export default function PlayerList({
     overscan: 12
   });
 
-  if (players.length === 0) {
-    return (
-      <div className="card p-8 text-center text-text-secondary">
-        No players match the current filters.
-      </div>
-    );
-  }
-
   return (
-    <div ref={parentRef} className="card overflow-y-auto" style={{ height: "100%" }}>
-      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
-        {virtualizer.getVirtualItems().map((row) => {
-          const player = players[row.index];
-          const drafted = draftedIds.has(player.id);
-          return (
-            <div
-              key={player.id}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: row.size,
-                transform: `translateY(${row.start}px)`
-              }}
-            >
-              <PlayerRow
-                player={player}
-                drafted={drafted}
-                draftedByLabel={drafted ? draftedByLabel(player.id) : null}
-                tier={tierFor?.(player.id) ?? null}
-                auctionValue={auctionValueFor?.(player.id) ?? null}
-                favorite={favoriteIds?.has(player.id) ?? false}
-                doNotDraft={doNotDraftIds?.has(player.id) ?? false}
-                onSelect={() => onSelect(player)}
-                onInfo={() => onInfo(player)}
-                onToggleFavorite={() => onToggleFavorite(player)}
-              />
-            </div>
-          );
-        })}
-      </div>
+    <div className="card flex flex-col overflow-hidden" style={{ height: "100%" }}>
+      <PlayerListHeader />
+      {players.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center p-8 text-center text-text-secondary">
+          No players match the current filters.
+        </div>
+      ) : (
+        <div ref={parentRef} className="flex-1 min-h-0 overflow-y-auto">
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {virtualizer.getVirtualItems().map((row) => {
+              const player = players[row.index];
+              const drafted = draftedIds.has(player.id);
+              return (
+                <div
+                  key={player.id}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: row.size,
+                    transform: `translateY(${row.start}px)`
+                  }}
+                >
+                  <PlayerRow
+                    player={player}
+                    drafted={drafted}
+                    draftedByLabel={drafted ? draftedByLabel(player.id) : null}
+                    tier={tierFor?.(player.id) ?? null}
+                    auctionValue={auctionValueFor?.(player.id) ?? null}
+                    favorite={favoriteIds?.has(player.id) ?? false}
+                    doNotDraft={doNotDraftIds?.has(player.id) ?? false}
+                    onSelect={() => onSelect(player)}
+                    onInfo={() => onInfo(player)}
+                    onToggleFavorite={() => onToggleFavorite(player)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
