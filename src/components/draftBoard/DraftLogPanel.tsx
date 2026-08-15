@@ -1,9 +1,10 @@
-import type { Pick } from "@/lib/types";
+import type { Pick, Player } from "@/lib/types";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 export default function DraftLogPanel({
   picks,
   teamNames,
-  playerName,
+  playerFor,
   onUndoLast,
   onReassignTeam,
   onDeletePick,
@@ -11,7 +12,7 @@ export default function DraftLogPanel({
 }: {
   picks: Pick[];
   teamNames: string[];
-  playerName: (playerId: string) => string;
+  playerFor: (playerId: string) => Player | undefined;
   onUndoLast: () => void;
   onReassignTeam: (overall: number, teamSlot: number) => void;
   onDeletePick: (overall: number) => void;
@@ -46,12 +47,22 @@ export default function DraftLogPanel({
 
         <div className="flex-1 overflow-y-auto flex flex-col gap-2">
           {reversed.length === 0 && <p className="text-text-secondary text-sm">No picks yet.</p>}
-          {reversed.map((pick) => (
+          {reversed.map((pick) => {
+            const player = playerFor(pick.playerId);
+            return (
             <div key={pick.overall} className="flex items-center gap-2 rounded-md bg-surface-sunken px-3 py-2">
               <span className="text-xs text-text-secondary w-14 shrink-0 tabular-nums">
                 {pick.round}.{String(pick.slotInRound).padStart(2, "0")}
               </span>
-              <span className="flex-1 min-w-0 truncate text-sm font-medium">{playerName(pick.playerId)}</span>
+              {player && (
+                <span
+                  className="text-xs font-semibold w-7 shrink-0 text-center rounded px-1 py-0.5"
+                  style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
+                >
+                  {player.position}
+                </span>
+              )}
+              <span className="flex-1 min-w-0 truncate text-sm font-medium">{player?.name ?? "Unknown player"}</span>
               <select
                 className="rounded bg-surface-raised text-xs px-1.5 py-1 min-h-touch max-w-[9rem]"
                 value={pick.teamSlot}
@@ -76,7 +87,8 @@ export default function DraftLogPanel({
                 Delete
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

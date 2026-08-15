@@ -14,6 +14,7 @@ import {
 import type { Player } from "@/lib/types";
 import RankedList from "@/components/shared/RankedList";
 import PersonalPlayerRow from "@/components/myBoard/PersonalPlayerRow";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 type Tab = "board" | "favorites" | "dnd";
 
@@ -176,7 +177,12 @@ export default function MyBoard() {
                       setSearch("");
                     }}
                   >
-                    <span className="text-xs font-semibold text-text-secondary w-8">{p.position}</span>
+                    <span
+                      className="text-xs font-semibold w-8 shrink-0 text-center rounded px-1 py-0.5"
+                      style={{ backgroundColor: POSITION_COLOR[p.position], color: POSITION_TEXT_COLOR[p.position] }}
+                    >
+                      {p.position}
+                    </span>
                     <span className="flex-1">{p.name}</span>
                     <span className="text-xs text-text-secondary">+ Add</span>
                   </button>

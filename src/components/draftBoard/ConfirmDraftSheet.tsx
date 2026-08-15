@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Player } from "@/lib/types";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 export default function ConfirmDraftSheet({
   player,
@@ -29,9 +30,17 @@ export default function ConfirmDraftSheet({
         aria-modal="true"
         aria-label={`Confirm draft pick for ${player.name}`}
       >
-        <div>
-          <p className="text-xs text-text-secondary uppercase tracking-wide">{player.position} · {player.team}</p>
-          <h2 className="font-display text-xl font-semibold">{player.name}</h2>
+        <div className="flex items-center gap-3 min-w-0">
+          <span
+            className="text-sm font-semibold w-9 h-9 shrink-0 flex items-center justify-center rounded"
+            style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
+          >
+            {player.position}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs text-text-secondary uppercase tracking-wide">{player.team}</p>
+            <h2 className="font-display text-xl font-semibold truncate">{player.name}</h2>
+          </div>
         </div>
 
         <label className="flex flex-col gap-1.5">

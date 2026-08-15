@@ -341,7 +341,7 @@ export default function DraftBoard() {
         <DraftLogPanel
           picks={draft.picks}
           teamNames={draft.settings.teamNames}
-          playerName={(playerId) => playersById.get(playerId)?.name ?? "Unknown player"}
+          playerFor={(playerId) => playersById.get(playerId)}
           onUndoLast={() => undoLastPick(id)}
           onReassignTeam={(overall, teamSlot) => correctPick(id, overall, { teamSlot })}
           onDeletePick={(overall) => deletePick(id, overall)}
