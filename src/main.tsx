@@ -3,9 +3,12 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { requestPersistentStorage } from "./lib/persistence";
+import { autoPullIfLocalEmpty, installCloudSyncHooks } from "./lib/cloudSync";
 import "./styles/index.css";
 
 void requestPersistentStorage();
+installCloudSyncHooks();
+void autoPullIfLocalEmpty();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

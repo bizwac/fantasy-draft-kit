@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
 import { rosterSlotCount } from "@/lib/draftMath";
 import type { Draft } from "@/lib/types";
+import CloudSyncPanel from "@/components/home/CloudSyncPanel";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ export default function Home() {
           New Draft
         </button>
       </div>
+
+      <CloudSyncPanel />
 
       {drafts === undefined && <p className="text-text-secondary">Loading…</p>}
 
