@@ -12,7 +12,7 @@ import {
   toggleFavorite
 } from "@/lib/personalRepo";
 import type { Player } from "@/lib/types";
-import RankedList from "@/components/myBoard/RankedList";
+import RankedList from "@/components/shared/RankedList";
 import PersonalPlayerRow from "@/components/myBoard/PersonalPlayerRow";
 
 type Tab = "board" | "favorites" | "dnd";

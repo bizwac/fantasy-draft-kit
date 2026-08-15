@@ -9,6 +9,7 @@ import { buildRosterState } from "@/lib/rosterTracker";
 import { computeHandcuffs } from "@/lib/handcuff";
 import { setNote, toggleDoNotDraft, toggleFavorite } from "@/lib/personalRepo";
 import { loadTimerSettings } from "@/lib/timerSettings";
+import { loadColumnSettings, visibleOrderedColumns } from "@/lib/columnSettings";
 import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
@@ -60,6 +61,7 @@ export default function DraftBoard() {
   const [logOpen, setLogOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [timerSettings] = useState(() => loadTimerSettings());
+  const [columns] = useState(() => visibleOrderedColumns(loadColumnSettings()));
 
   const draftedIds = useMemo(() => new Set((draft?.picks ?? []).map((p) => p.playerId)), [draft?.picks]);
 
@@ -327,6 +329,7 @@ export default function DraftBoard() {
           players={filteredSortedPlayers}
           draftedIds={draftedIds}
           draftedByLabel={draftedByLabel}
+          columns={columns}
           tierFor={(playerId) => metrics.tiers.get(playerId)?.tier ?? null}
           auctionValueFor={(playerId) => metrics.auctionValues.get(playerId) ?? null}
           favoriteIds={favoriteIds}

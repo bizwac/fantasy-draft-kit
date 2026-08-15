@@ -1,11 +1,78 @@
+import type { ReactNode } from "react";
 import type { Player } from "@/lib/types";
-import { COL } from "./playerListColumns";
+import { COLUMN_DEFS, columnWrapperClass, type ColumnKey } from "./playerListColumns";
 import { POSITION_COLOR } from "@/lib/positionColors";
+
+function renderCell(
+  key: ColumnKey,
+  ctx: {
+    player: Player;
+    drafted: boolean;
+    draftedByLabel: string | null;
+    tier?: number | null;
+    auctionValue?: number | null;
+  }
+): ReactNode {
+  const { player, drafted, draftedByLabel, tier, auctionValue } = ctx;
+  const wrapperClass = columnWrapperClass(COLUMN_DEFS[key]);
+  switch (key) {
+    case "injury":
+      return (
+        <span className={`text-xs font-semibold text-danger ${wrapperClass}`} title={player.injuryStatus ?? undefined}>
+          {player.injuryStatus?.slice(0, 1) ?? ""}
+        </span>
+      );
+    case "adp":
+      return (
+        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+          {player.adp !== null ? player.adp.toFixed(1) : "—"}
+        </span>
+      );
+    case "rank":
+      return (
+        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>{player.overallRank ?? "—"}</span>
+      );
+    case "bye":
+      return (
+        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>{player.byeWeek ?? "—"}</span>
+      );
+    case "rookie":
+      return (
+        <span className={`text-xs font-semibold text-info ${wrapperClass}`} title="Rookie">
+          {player.isRookie ? "R" : ""}
+        </span>
+      );
+    case "team":
+      return <span className={`text-sm text-text-secondary ${wrapperClass}`}>{player.team}</span>;
+    case "tier":
+      return (
+        <span
+          className={`text-xs font-medium text-text-secondary ${wrapperClass} tabular-nums`}
+          title={tier != null ? `Tier ${tier}` : undefined}
+        >
+          {tier != null ? `T${tier}` : "—"}
+        </span>
+      );
+    case "value":
+      return (
+        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`} title="Estimated auction value">
+          {auctionValue != null ? `$${Math.round(auctionValue)}` : "—"}
+        </span>
+      );
+    case "draftedBy":
+      return (
+        <span className={`text-xs text-text-secondary ${wrapperClass} truncate`}>
+          {drafted && draftedByLabel ? draftedByLabel : ""}
+        </span>
+      );
+  }
+}
 
 export default function PlayerRow({
   player,
   drafted,
   draftedByLabel,
+  columns,
   tier,
   auctionValue,
   favorite,
@@ -17,6 +84,7 @@ export default function PlayerRow({
   player: Player;
   drafted: boolean;
   draftedByLabel: string | null;
+  columns: ColumnKey[];
   tier?: number | null;
   auctionValue?: number | null;
   favorite?: boolean;
@@ -39,7 +107,7 @@ export default function PlayerRow({
         className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 min-h-touch text-left overflow-hidden"
       >
         <span
-          className={`text-xs font-semibold ${COL.pos} shrink-0 text-center rounded px-1 py-0.5`}
+          className="text-xs font-semibold w-8 sm:w-9 shrink-0 text-center rounded px-1 py-0.5"
           style={{ backgroundColor: POSITION_COLOR[player.position], color: "var(--accent-ink)" }}
         >
           {player.position}
@@ -52,37 +120,9 @@ export default function PlayerRow({
             <BanIcon />
           </span>
         )}
-        <span
-          className={`text-xs font-semibold text-danger ${COL.injury} shrink-0`}
-          title={player.injuryStatus ?? undefined}
-        >
-          {player.injuryStatus?.slice(0, 1) ?? ""}
-        </span>
-        <span className={`text-sm text-text-secondary ${COL.adp} shrink-0 tabular-nums`}>
-          {player.adp !== null ? player.adp.toFixed(1) : "—"}
-        </span>
-        <span className={`text-sm text-text-secondary ${COL.bye} shrink-0 tabular-nums`}>
-          {player.byeWeek ?? "—"}
-        </span>
-        <span className={`hidden lg:inline text-xs font-semibold text-info ${COL.rookie} shrink-0`} title="Rookie">
-          {player.isRookie ? "R" : ""}
-        </span>
-        <span className={`hidden lg:inline text-sm text-text-secondary ${COL.team} shrink-0`}>{player.team}</span>
-        <span
-          className={`hidden lg:inline text-xs font-medium text-text-secondary ${COL.tier} shrink-0 tabular-nums`}
-          title={tier != null ? `Tier ${tier}` : undefined}
-        >
-          {tier != null ? `T${tier}` : "—"}
-        </span>
-        <span
-          className={`hidden lg:inline text-sm text-text-secondary ${COL.value} shrink-0 tabular-nums`}
-          title="Estimated auction value"
-        >
-          {auctionValue != null ? `$${Math.round(auctionValue)}` : "—"}
-        </span>
-        <span className={`hidden lg:inline text-xs text-text-secondary ${COL.draftedBy} shrink-0 truncate`}>
-          {drafted && draftedByLabel ? draftedByLabel : ""}
-        </span>
+        {columns.map((key) => (
+          <span key={key}>{renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue })}</span>
+        ))}
       </button>
       <button
         type="button"

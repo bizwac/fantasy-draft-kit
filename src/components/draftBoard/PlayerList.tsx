@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Player } from "@/lib/types";
+import type { ColumnKey } from "./playerListColumns";
 import PlayerRow from "./PlayerRow";
 import PlayerListHeader from "./PlayerListHeader";
 
@@ -10,6 +11,7 @@ export default function PlayerList({
   players,
   draftedIds,
   draftedByLabel,
+  columns,
   tierFor,
   auctionValueFor,
   favoriteIds,
@@ -21,6 +23,7 @@ export default function PlayerList({
   players: Player[];
   draftedIds: Set<string>;
   draftedByLabel: (playerId: string) => string | null;
+  columns: ColumnKey[];
   tierFor?: (playerId: string) => number | null;
   auctionValueFor?: (playerId: string) => number | null;
   favoriteIds?: Set<string>;
@@ -40,7 +43,7 @@ export default function PlayerList({
 
   return (
     <div className="card flex flex-col overflow-hidden" style={{ height: "100%" }}>
-      <PlayerListHeader />
+      <PlayerListHeader columns={columns} />
       {players.length === 0 ? (
         <div className="flex-1 flex items-center justify-center p-8 text-center text-text-secondary">
           No players match the current filters.
@@ -67,6 +70,7 @@ export default function PlayerList({
                     player={player}
                     drafted={drafted}
                     draftedByLabel={drafted ? draftedByLabel(player.id) : null}
+                    columns={columns}
                     tier={tierFor?.(player.id) ?? null}
                     auctionValue={auctionValueFor?.(player.id) ?? null}
                     favorite={favoriteIds?.has(player.id) ?? false}
