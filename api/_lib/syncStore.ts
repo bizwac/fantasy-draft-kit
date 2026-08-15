@@ -1,9 +1,13 @@
-import { head, put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 
 // The one JSON blob this personal, single-user app backs up to — same
 // shape as the manual export/import in src/lib/personalRepo.ts, just
 // automated. Fixed pathname + allowOverwrite so there's always exactly
-// one current backup, not an ever-growing history.
+// one current backup, not an ever-growing history. Private access (the
+// store here is configured private) — `get()` handles the
+// authenticated read the same way `put()` handles the authenticated
+// write, both via BLOB_READ_WRITE_TOKEN, rather than us hand-rolling
+// auth headers against a guessed URL/token format.
 const BLOB_PATH = "fade-signal-backup.json";
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -17,25 +21,19 @@ function errorResult(status: number, message: string): SyncResult {
   return { status, contentType: "application/json", body: JSON.stringify({ error: message }) };
 }
 
-// GET: the client never sees the Blob's own URL — everything stays
+// The client never sees the Blob store directly — everything stays
 // behind the same Basic Auth gate that already protects every other
-// route (middleware.ts matches /(.*), including /api/*), rather than
-// handing out a second, unauthenticated way to reach the data.
+// route (middleware.ts matches /(.*), including /api/*).
 export async function pullBackup(): Promise<SyncResult> {
   try {
-    const info = await head(BLOB_PATH);
-    const upstream = await fetch(info.url, { signal: AbortSignal.timeout(10000) });
-    if (!upstream.ok) {
-      return errorResult(502, `Blob storage returned ${upstream.status}`);
-    }
-    const body = await upstream.text();
-    return { status: 200, contentType: "application/json", body };
-  } catch (err) {
-    const message = (err as Error).message ?? "";
-    if (message.includes("not found") || message.includes("404")) {
+    const result = await get(BLOB_PATH, { access: "private" });
+    if (!result?.stream) {
       return errorResult(404, "No backup has been pushed yet.");
     }
-    return errorResult(502, `Couldn't reach blob storage: ${message}`);
+    const body = await new Response(result.stream).text();
+    return { status: 200, contentType: "application/json", body };
+  } catch (err) {
+    return errorResult(502, `Couldn't reach blob storage: ${(err as Error).message}`);
   }
 }
 
@@ -56,7 +54,7 @@ export async function pushBackup(rawBody: string): Promise<SyncResult> {
 
   try {
     await put(BLOB_PATH, rawBody, {
-      access: "public",
+      access: "private",
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: "application/json",
