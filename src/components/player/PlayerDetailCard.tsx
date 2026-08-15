@@ -1,4 +1,5 @@
-import type { Player } from "@/lib/types";
+import { useState } from "react";
+import type { Player, PersonalOverride } from "@/lib/types";
 import { depthChartLabel } from "@/lib/handcuff";
 import Badge from "./Badge";
 
@@ -10,6 +11,10 @@ export default function PlayerDetailCard({
   auctionValue,
   handcuff,
   draftedByLabel,
+  override,
+  onToggleFavorite,
+  onToggleDoNotDraft,
+  onSaveNote,
   onClose
 }: {
   player: Player;
@@ -19,9 +24,14 @@ export default function PlayerDetailCard({
   auctionValue: number | null;
   handcuff: Player | null;
   draftedByLabel: string | null;
+  override: PersonalOverride | undefined;
+  onToggleFavorite: () => void;
+  onToggleDoNotDraft: () => void;
+  onSaveNote: (note: string) => void;
   onClose: () => void;
 }) {
   const depthLabel = depthChartLabel(player);
+  const [note, setNote] = useState(override?.note ?? "");
 
   return (
     <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose} role="presentation">
@@ -51,6 +61,23 @@ export default function PlayerDetailCard({
           {player.contractYear && <Badge tone="warning">Contract Year</Badge>}
           {player.winningTeam && <Badge tone="success">Winning Team</Badge>}
           {draftedByLabel && <Badge tone="neutral">Drafted by {draftedByLabel}</Badge>}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            className={override?.favorite ? "btn-primary text-sm" : "btn-secondary text-sm"}
+          >
+            {override?.favorite ? "★ Favorited" : "☆ Favorite"}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleDoNotDraft}
+            className={override?.doNotDraft ? "btn text-sm bg-danger text-white" : "btn-secondary text-sm"}
+          >
+            {override?.doNotDraft ? "Do-Not-Draft ✕" : "Mark Do-Not-Draft"}
+          </button>
         </div>
 
         <div className="grid grid-cols-3 gap-3 text-center">
@@ -89,6 +116,19 @@ export default function PlayerDetailCard({
           ) : (
             <p className="text-sm text-text-secondary italic">No usage data imported yet.</p>
           )}
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-text-secondary mb-1.5">Note</h3>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => onSaveNote(note)}
+            maxLength={500}
+            rows={3}
+            placeholder="Add a note visible on this player's card…"
+            className="w-full rounded-md bg-surface-sunken px-2 py-1.5 text-sm"
+          />
         </div>
 
         <p className="text-xs text-text-secondary">Data as of {new Date(player.lastUpdated).toLocaleString()}</p>

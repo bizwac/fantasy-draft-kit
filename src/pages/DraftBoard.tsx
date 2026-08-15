@@ -7,6 +7,7 @@ import { addPick, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
 import { assignTiers, computeAuctionValues, computeVorp, replacementLevels, replacementRanks } from "@/lib/valueMetrics";
 import { buildRosterState } from "@/lib/rosterTracker";
 import { computeHandcuffs } from "@/lib/handcuff";
+import { setNote, toggleDoNotDraft, toggleFavorite } from "@/lib/personalRepo";
 import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
@@ -22,13 +23,14 @@ const OUT_STATUSES = new Set(["Out", "IR", "PUP", "Suspended"]);
 const POSITIONS: Array<Position | "ALL"> = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
-type SortKey = "adp" | "proj" | "vorp" | "value" | "tier";
+type SortKey = "adp" | "proj" | "vorp" | "value" | "tier" | "myrank";
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "adp", label: "ADP" },
   { value: "proj", label: "Projection" },
   { value: "vorp", label: "VORP" },
   { value: "value", label: "$ Value" },
-  { value: "tier", label: "Tier" }
+  { value: "tier", label: "Tier" },
+  { value: "myrank", label: "My Rank" }
 ];
 
 function rosterSlotsKey(slots: RosterSlots): string {
@@ -41,6 +43,7 @@ export default function DraftBoard() {
   const { id } = useParams<{ id: string }>();
   const draft = useLiveQuery(() => (id ? db.drafts.get(id) : undefined), [id]);
   const players = useLiveQuery(() => db.players.toArray(), []);
+  const overrides = useLiveQuery(() => db.personalRankings.toArray(), []);
 
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<Position | "ALL">("ALL");
@@ -48,6 +51,8 @@ export default function DraftBoard() {
   const [hideOutIR, setHideOutIR] = useState(false);
   const [rookiesOnly, setRookiesOnly] = useState(false);
   const [winningTeamOnly, setWinningTeamOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [hideDoNotDraft, setHideDoNotDraft] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [confirmingPlayer, setConfirmingPlayer] = useState<Player | null>(null);
   const [detailPlayer, setDetailPlayer] = useState<Player | null>(null);
@@ -63,6 +68,13 @@ export default function DraftBoard() {
   }, [players]);
 
   const handcuffs = useMemo(() => computeHandcuffs(players ?? []), [players]);
+
+  const overridesById = useMemo(() => {
+    const map = new Map((overrides ?? []).map((o) => [o.playerId, o]));
+    return map;
+  }, [overrides]);
+  const favoriteIds = useMemo(() => new Set((overrides ?? []).filter((o) => o.favorite).map((o) => o.playerId)), [overrides]);
+  const doNotDraftIds = useMemo(() => new Set((overrides ?? []).filter((o) => o.doNotDraft).map((o) => o.playerId)), [overrides]);
 
   // VORP/tiers/$ depend only on the player pool + this draft's settings,
   // never on picks.length — recomputing them on every pick would be both
@@ -107,7 +119,9 @@ export default function DraftBoard() {
       .filter((p) => (hideDrafted ? !draftedIds.has(p.id) : true))
       .filter((p) => (hideOutIR ? !(p.injuryStatus && OUT_STATUSES.has(p.injuryStatus)) : true))
       .filter((p) => (rookiesOnly ? p.isRookie : true))
-      .filter((p) => (winningTeamOnly ? p.winningTeam === true : true));
+      .filter((p) => (winningTeamOnly ? p.winningTeam === true : true))
+      .filter((p) => (favoritesOnly ? favoriteIds.has(p.id) : true))
+      .filter((p) => (hideDoNotDraft ? !doNotDraftIds.has(p.id) : true));
 
     const rank = (p: Player): number => {
       switch (sortKey) {
@@ -119,6 +133,8 @@ export default function DraftBoard() {
           return -(metrics?.auctionValues.get(p.id) ?? -Infinity);
         case "tier":
           return metrics?.tiers.get(p.id)?.tier ?? Infinity;
+        case "myrank":
+          return overridesById.get(p.id)?.customRank ?? Infinity;
         case "adp":
         default:
           return p.adp ?? Infinity;
@@ -126,11 +142,31 @@ export default function DraftBoard() {
     };
 
     return sorted.sort((a, b) => {
-      const diff = rank(a) - rank(b);
-      if (diff !== 0) return diff;
+      // Compare ranks directly rather than subtracting first — two
+      // players both missing the sorted metric produce Infinity - Infinity
+      // (NaN), which broke the alphabetical tie-break below.
+      const rankA = rank(a);
+      const rankB = rank(b);
+      if (rankA !== rankB) return rankA - rankB;
       return a.name.localeCompare(b.name);
     });
-  }, [players, search, position, hideDrafted, hideOutIR, rookiesOnly, winningTeamOnly, draftedIds, sortKey, metrics]);
+  }, [
+    players,
+    search,
+    position,
+    hideDrafted,
+    hideOutIR,
+    rookiesOnly,
+    winningTeamOnly,
+    favoritesOnly,
+    hideDoNotDraft,
+    favoriteIds,
+    doNotDraftIds,
+    draftedIds,
+    sortKey,
+    metrics,
+    overridesById
+  ]);
 
   if (!draft || !players || !metrics) {
     return <p className="text-text-secondary">Loading…</p>;
@@ -259,6 +295,14 @@ export default function DraftBoard() {
           <input type="checkbox" checked={winningTeamOnly} onChange={(e) => setWinningTeamOnly(e.target.checked)} />
           Winning teams only
         </label>
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} />
+          Favorites only
+        </label>
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input type="checkbox" checked={hideDoNotDraft} onChange={(e) => setHideDoNotDraft(e.target.checked)} />
+          Hide do-not-draft
+        </label>
       </div>
 
       <div className="flex-1 min-h-0">
@@ -268,8 +312,11 @@ export default function DraftBoard() {
           draftedByLabel={draftedByLabel}
           tierFor={(playerId) => metrics.tiers.get(playerId)?.tier ?? null}
           auctionValueFor={(playerId) => metrics.auctionValues.get(playerId) ?? null}
+          favoriteIds={favoriteIds}
+          doNotDraftIds={doNotDraftIds}
           onSelect={(player) => setConfirmingPlayer(player)}
           onInfo={(player) => setDetailPlayer(player)}
+          onToggleFavorite={(player) => toggleFavorite(player.id)}
         />
       </div>
 
@@ -313,6 +360,10 @@ export default function DraftBoard() {
             return null;
           })()}
           draftedByLabel={draftedIds.has(detailPlayer.id) ? draftedByLabel(detailPlayer.id) : null}
+          override={overridesById.get(detailPlayer.id)}
+          onToggleFavorite={() => toggleFavorite(detailPlayer.id)}
+          onToggleDoNotDraft={() => toggleDoNotDraft(detailPlayer.id)}
+          onSaveNote={(note) => setNote(detailPlayer.id, note)}
           onClose={() => setDetailPlayer(null)}
         />
       )}

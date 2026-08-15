@@ -11,16 +11,22 @@ export default function PlayerList({
   draftedByLabel,
   tierFor,
   auctionValueFor,
+  favoriteIds,
+  doNotDraftIds,
   onSelect,
-  onInfo
+  onInfo,
+  onToggleFavorite
 }: {
   players: Player[];
   draftedIds: Set<string>;
   draftedByLabel: (playerId: string) => string | null;
   tierFor?: (playerId: string) => number | null;
   auctionValueFor?: (playerId: string) => number | null;
+  favoriteIds?: Set<string>;
+  doNotDraftIds?: Set<string>;
   onSelect: (player: Player) => void;
   onInfo: (player: Player) => void;
+  onToggleFavorite: (player: Player) => void;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -63,8 +69,11 @@ export default function PlayerList({
                 draftedByLabel={drafted ? draftedByLabel(player.id) : null}
                 tier={tierFor?.(player.id) ?? null}
                 auctionValue={auctionValueFor?.(player.id) ?? null}
+                favorite={favoriteIds?.has(player.id) ?? false}
+                doNotDraft={doNotDraftIds?.has(player.id) ?? false}
                 onSelect={() => onSelect(player)}
                 onInfo={() => onInfo(player)}
+                onToggleFavorite={() => onToggleFavorite(player)}
               />
             </div>
           );
