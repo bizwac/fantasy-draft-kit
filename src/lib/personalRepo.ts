@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { db } from "./db";
-import type { PersonalOverride } from "./types";
+import type { Draft, PersonalOverride } from "./types";
 
 // Personal rankings/notes/favorites/DND are keyed by playerId and shared
 // across every draft (spec §3.2) — this is the one dataset that isn't
@@ -92,34 +92,85 @@ const PersonalOverrideSchema = z.object({
   doNotDraft: z.boolean().optional(),
   note: z.string().nullable().optional()
 });
+
+// Full Draft schema, matching types.ts exactly — drafts are the other
+// dataset that isn't trivially re-fetchable (a completed draft can't be
+// regenerated), so the backup covers them too (v2), not just personal
+// rankings (v1). Kept backward-compatible: a v1 file still imports fine,
+// it just has no drafts to restore.
+const RosterSlotsSchema = z.object({
+  QB: z.number(),
+  RB: z.number(),
+  WR: z.number(),
+  TE: z.number(),
+  FLEX: z.number(),
+  SUPERFLEX: z.number().optional(),
+  K: z.number(),
+  DST: z.number(),
+  BENCH: z.number(),
+  IR: z.number().optional()
+});
+const DraftSettingsSchema = z.object({
+  teams: z.number(),
+  scoring: z.enum(["ppr", "half", "std", "superflex-ppr"]),
+  rosterSlots: RosterSlotsSchema,
+  snake: z.literal(true),
+  myDraftSlot: z.number(),
+  teamNames: z.array(z.string())
+});
+const PickSchema = z.object({
+  overall: z.number(),
+  round: z.number(),
+  slotInRound: z.number(),
+  teamSlot: z.number(),
+  playerId: z.string(),
+  timestamp: z.string(),
+  corrected: z.boolean()
+});
+const DraftSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  settings: DraftSettingsSchema,
+  picks: z.array(PickSchema),
+  status: z.enum(["setup", "live", "complete"])
+});
+
 const PersonalDataExportSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   exportedAt: z.string(),
-  overrides: z.array(PersonalOverrideSchema)
+  overrides: z.array(PersonalOverrideSchema),
+  drafts: z.array(DraftSchema).optional()
 });
 
 export interface PersonalDataExport {
-  version: 1;
+  version: 2;
   exportedAt: string;
   overrides: PersonalOverride[];
+  drafts: Draft[];
 }
 
 export async function exportPersonalData(): Promise<PersonalDataExport> {
-  const overrides = await db.personalRankings.toArray();
-  return { version: 1, exportedAt: new Date().toISOString(), overrides };
+  const [overrides, drafts] = await Promise.all([db.personalRankings.toArray(), db.drafts.toArray()]);
+  return { version: 2, exportedAt: new Date().toISOString(), overrides, drafts };
 }
 
 export interface ImportSummary {
   merged: number;
+  draftsRestored: number;
   errors: string[];
 }
 
 // Validates against a schema before merging (spec §7b.2) and reconciles
 // by playerId rather than blowing away existing entries (spec §3b.3).
+// Drafts restore by full overwrite-by-id instead — a draft backup is a
+// single authoritative snapshot (unlike personalRankings, which
+// accumulates small edits from multiple points), so "restore" means put
+// back exactly what was exported, not field-merge with what's there now.
 export async function importPersonalData(json: unknown): Promise<ImportSummary> {
   const parsed = PersonalDataExportSchema.safeParse(json);
   if (!parsed.success) {
-    return { merged: 0, errors: ["File isn't a valid Fade Signal personal-data export."] };
+    return { merged: 0, draftsRestored: 0, errors: ["File isn't a valid Fade Signal personal-data export."] };
   }
 
   const existing = await db.personalRankings.toArray();
@@ -131,5 +182,11 @@ export async function importPersonalData(json: unknown): Promise<ImportSummary> 
   }
 
   await db.personalRankings.bulkPut([...byId.values()]);
-  return { merged: parsed.data.overrides.length, errors: [] };
+
+  const drafts = parsed.data.drafts ?? [];
+  if (drafts.length > 0) {
+    await db.drafts.bulkPut(drafts);
+  }
+
+  return { merged: parsed.data.overrides.length, draftsRestored: drafts.length, errors: [] };
 }
