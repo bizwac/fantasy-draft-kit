@@ -1,19 +1,25 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { proxyAdpRequest } from "./_lib/adpProxy";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+// Edge runtime: plain Web Request/Response, no Node-specific API surface,
+// no @vercel/node dependency to drift out of sync with Vercel's actual
+// runtime shape.
+export const config = { runtime: "edge" };
+
+export default async function handler(request: Request): Promise<Response> {
+  if (request.method !== "GET") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
-  const params = new URLSearchParams();
-  for (const key of ["format", "teams", "year"]) {
-    const value = req.query[key];
-    if (typeof value === "string") params.set(key, value);
-  }
-
-  const result = await proxyAdpRequest(params);
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
-  res.status(result.status).setHeader("Content-Type", result.contentType).send(result.body);
+  const url = new URL(request.url);
+  const result = await proxyAdpRequest(url.searchParams);
+  return new Response(result.body, {
+    status: result.status,
+    headers: {
+      "Content-Type": result.contentType,
+      "Cache-Control": "s-maxage=3600, stale-while-revalidate=86400"
+    }
+  });
 }
