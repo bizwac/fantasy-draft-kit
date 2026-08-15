@@ -38,6 +38,13 @@
   --neutral: #5c6066;
   --neutral-ink: #ffffff;
 
+  /* Position tiles only, not general amber usage (buttons, active nav —
+     those keep --accent-ink's dark-on-amber, which reads far better).
+     Chosen deliberately over --accent-ink so WR's tile matches the
+     white text used by every other position tile, even though it reads
+     slightly less crisply against amber on its own. */
+  --position-amber-ink: #ffffff;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
