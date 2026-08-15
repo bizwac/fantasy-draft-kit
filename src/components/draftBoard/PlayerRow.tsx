@@ -13,11 +13,15 @@ export default function PlayerRow({
   player,
   drafted,
   draftedByLabel,
+  tier,
+  auctionValue,
   onSelect
 }: {
   player: Player;
   drafted: boolean;
   draftedByLabel: string | null;
+  tier?: number | null;
+  auctionValue?: number | null;
   onSelect: () => void;
 }) {
   return (
@@ -51,6 +55,16 @@ export default function PlayerRow({
       <span className="text-sm text-text-secondary w-10 shrink-0 tabular-nums">
         {player.byeWeek ?? "—"}
       </span>
+      {tier != null && (
+        <span className="text-xs font-medium text-text-secondary w-8 shrink-0 tabular-nums" title={`Tier ${tier}`}>
+          T{tier}
+        </span>
+      )}
+      {auctionValue != null && (
+        <span className="text-sm text-text-secondary w-12 shrink-0 tabular-nums" title="Estimated auction value">
+          ${Math.round(auctionValue)}
+        </span>
+      )}
       {drafted && draftedByLabel && (
         <span className="text-xs text-text-secondary w-24 shrink-0 truncate">{draftedByLabel}</span>
       )}

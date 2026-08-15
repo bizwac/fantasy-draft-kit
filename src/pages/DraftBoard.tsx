@@ -4,13 +4,34 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { locationForOverallPick, nextPickForSlot, rosterSlotCount } from "@/lib/draftMath";
 import { addPick, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
-import type { Player, Position } from "@/lib/types";
+import { assignTiers, computeAuctionValues, computeVorp, replacementLevels, replacementRanks } from "@/lib/valueMetrics";
+import { buildRosterState } from "@/lib/rosterTracker";
+import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
 import ConfirmDraftSheet from "@/components/draftBoard/ConfirmDraftSheet";
 import DraftLogPanel from "@/components/draftBoard/DraftLogPanel";
+import ScarcityMeter from "@/components/draftBoard/ScarcityMeter";
+import TierAlertBanner from "@/components/draftBoard/TierAlertBanner";
+import RosterPanel from "@/components/draftBoard/RosterPanel";
 
 const POSITIONS: Array<Position | "ALL"> = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "K", "DST"];
+
+type SortKey = "adp" | "proj" | "vorp" | "value" | "tier";
+const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: "adp", label: "ADP" },
+  { value: "proj", label: "Projection" },
+  { value: "vorp", label: "VORP" },
+  { value: "value", label: "$ Value" },
+  { value: "tier", label: "Tier" }
+];
+
+function rosterSlotsKey(slots: RosterSlots): string {
+  return [slots.QB, slots.RB, slots.WR, slots.TE, slots.FLEX, slots.SUPERFLEX ?? 0, slots.K, slots.DST, slots.BENCH, slots.IR ?? 0].join(
+    "|"
+  );
+}
 
 export default function DraftBoard() {
   const { id } = useParams<{ id: string }>();
@@ -20,8 +41,10 @@ export default function DraftBoard() {
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<Position | "ALL">("ALL");
   const [hideDrafted, setHideDrafted] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [confirmingPlayer, setConfirmingPlayer] = useState<Player | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
 
   const draftedIds = useMemo(() => new Set((draft?.picks ?? []).map((p) => p.playerId)), [draft?.picks]);
 
@@ -31,22 +54,72 @@ export default function DraftBoard() {
     return map;
   }, [players]);
 
+  // VORP/tiers/$ depend only on the player pool + this draft's settings,
+  // never on picks.length — recomputing them on every pick would be both
+  // wasteful and wrong (replacement level is a preseason baseline, not a
+  // "best remaining" metric that shifts pick-to-pick).
+  const settingsKey = draft ? `${draft.settings.teams}|${rosterSlotsKey(draft.settings.rosterSlots)}` : "";
+  const metrics = useMemo(() => {
+    if (!players || !draft) return null;
+    const levels = replacementLevels(players, draft.settings.rosterSlots, draft.settings.teams);
+    const vorp = computeVorp(players, levels);
+    const auctionValues = computeAuctionValues(players, vorp, {
+      teams: draft.settings.teams,
+      rosterSlots: draft.settings.rosterSlots
+    });
+    const tiers = assignTiers(players);
+    return { vorp, auctionValues, tiers };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, settingsKey]);
+
+  // "Quality remaining" uses positionRank (from ADP, always populated by
+  // the M2 refresh) against the replacement rank for this league's
+  // settings — spec §4.5's own definition. This works with or without
+  // projections imported, unlike VORP which needs projPoints.
+  const scarcityCounts = useMemo(() => {
+    const counts = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 } as Record<Position, number>;
+    if (!players || !draft) return counts;
+    const ranks = replacementRanks(draft.settings.rosterSlots, draft.settings.teams);
+    for (const p of players) {
+      if (draftedIds.has(p.id)) continue;
+      if (p.positionRank !== null && p.positionRank <= ranks[p.position]) counts[p.position]++;
+    }
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [players, settingsKey, draftedIds]);
+
   const filteredSortedPlayers = useMemo(() => {
     if (!players) return [];
     const query = search.trim().toLowerCase();
-    return players
+    const sorted = players
       .filter((p) => (position === "ALL" ? true : p.position === position))
       .filter((p) => (query ? p.name.toLowerCase().includes(query) : true))
-      .filter((p) => (hideDrafted ? !draftedIds.has(p.id) : true))
-      .sort((a, b) => {
-        const aAdp = a.adp ?? Infinity;
-        const bAdp = b.adp ?? Infinity;
-        if (aAdp !== bAdp) return aAdp - bAdp;
-        return a.name.localeCompare(b.name);
-      });
-  }, [players, search, position, hideDrafted, draftedIds]);
+      .filter((p) => (hideDrafted ? !draftedIds.has(p.id) : true));
 
-  if (!draft || !players) {
+    const rank = (p: Player): number => {
+      switch (sortKey) {
+        case "proj":
+          return -(p.projPoints ?? -Infinity);
+        case "vorp":
+          return -(metrics?.vorp.get(p.id) ?? -Infinity);
+        case "value":
+          return -(metrics?.auctionValues.get(p.id) ?? -Infinity);
+        case "tier":
+          return metrics?.tiers.get(p.id)?.tier ?? Infinity;
+        case "adp":
+        default:
+          return p.adp ?? Infinity;
+      }
+    };
+
+    return sorted.sort((a, b) => {
+      const diff = rank(a) - rank(b);
+      if (diff !== 0) return diff;
+      return a.name.localeCompare(b.name);
+    });
+  }, [players, search, position, hideDrafted, draftedIds, sortKey, metrics]);
+
+  if (!draft || !players || !metrics) {
     return <p className="text-text-secondary">Loading…</p>;
   }
 
@@ -58,6 +131,28 @@ export default function DraftBoard() {
   const myNextOverall = nextPickForSlot(draft.settings.myDraftSlot, draft.settings.teams, totalRounds, draft.picks.length);
   const myNextPick = myNextOverall !== null ? locationForOverallPick(myNextOverall, draft.settings.teams) : null;
   const picksUntilMine = myNextPick ? myNextPick.overall - onClock.overall : null;
+
+  const myPicks = draft.picks.filter((p) => p.teamSlot === draft.settings.myDraftSlot);
+  const rosterState = buildRosterState(myPicks, playersById, draft.settings.rosterSlots);
+
+  const tierAlerts: string[] = [];
+  if (isMyTurn) {
+    const neededPositions = ALL_POSITIONS.filter((pos) =>
+      rosterState.slots.some((s) => s.category === pos && s.player === null)
+    );
+    for (const pos of neededPositions) {
+      const remaining = players
+        .filter((p) => p.position === pos && !draftedIds.has(p.id))
+        .map((p) => metrics.tiers.get(p.id)?.tier)
+        .filter((t): t is number => t !== undefined);
+      if (remaining.length === 0) continue;
+      const bestTier = Math.min(...remaining);
+      const countInTier = remaining.filter((t) => t === bestTier).length;
+      if (countInTier <= 2) {
+        tierAlerts.push(`Last ${countInTier} Tier ${bestTier} ${pos}${countInTier === 1 ? "" : "s"} on the board`);
+      }
+    }
+  }
 
   function draftedByLabel(playerId: string): string | null {
     const pick = draft!.picks.find((p) => p.playerId === playerId);
@@ -75,22 +170,32 @@ export default function DraftBoard() {
     <div className="flex flex-col gap-4 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-4rem)]">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-display font-semibold truncate">{draft.name}</h1>
-        <button type="button" className="btn-secondary text-sm shrink-0" onClick={() => setLogOpen(true)}>
-          Draft Log
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button type="button" className="btn-secondary text-sm" onClick={() => setRosterOpen(true)}>
+            My Roster
+          </button>
+          <button type="button" className="btn-secondary text-sm" onClick={() => setLogOpen(true)}>
+            Draft Log
+          </button>
+        </div>
       </div>
 
       {isDraftOver ? (
         <div className="card p-6 text-center">Draft complete — every roster spot has been picked.</div>
       ) : (
-        <TurnTracker
-          onClock={onClock}
-          onClockTeamName={onClockTeamName}
-          isMyTurn={isMyTurn}
-          myNextPick={myNextPick}
-          picksUntilMine={picksUntilMine}
-        />
+        <>
+          <TurnTracker
+            onClock={onClock}
+            onClockTeamName={onClockTeamName}
+            isMyTurn={isMyTurn}
+            myNextPick={myNextPick}
+            picksUntilMine={picksUntilMine}
+          />
+          <TierAlertBanner alerts={tierAlerts} />
+        </>
       )}
+
+      <ScarcityMeter counts={scarcityCounts} />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -113,6 +218,18 @@ export default function DraftBoard() {
             {pos}
           </button>
         ))}
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          className="rounded-md bg-surface-sunken px-2 py-2 min-h-touch text-sm"
+          aria-label="Sort by"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              Sort: {opt.label}
+            </option>
+          ))}
+        </select>
         <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
           <input type="checkbox" checked={hideDrafted} onChange={(e) => setHideDrafted(e.target.checked)} />
           Hide drafted
@@ -124,6 +241,8 @@ export default function DraftBoard() {
           players={filteredSortedPlayers}
           draftedIds={draftedIds}
           draftedByLabel={draftedByLabel}
+          tierFor={(playerId) => metrics.tiers.get(playerId)?.tier ?? null}
+          auctionValueFor={(playerId) => metrics.auctionValues.get(playerId) ?? null}
           onSelect={(player) => setConfirmingPlayer(player)}
         />
       </div>
@@ -149,6 +268,8 @@ export default function DraftBoard() {
           onClose={() => setLogOpen(false)}
         />
       )}
+
+      {rosterOpen && <RosterPanel roster={rosterState} onClose={() => setRosterOpen(false)} />}
     </div>
   );
 }

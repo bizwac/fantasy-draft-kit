@@ -9,11 +9,15 @@ export default function PlayerList({
   players,
   draftedIds,
   draftedByLabel,
+  tierFor,
+  auctionValueFor,
   onSelect
 }: {
   players: Player[];
   draftedIds: Set<string>;
   draftedByLabel: (playerId: string) => string | null;
+  tierFor?: (playerId: string) => number | null;
+  auctionValueFor?: (playerId: string) => number | null;
   onSelect: (player: Player) => void;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -55,6 +59,8 @@ export default function PlayerList({
                 player={player}
                 drafted={drafted}
                 draftedByLabel={drafted ? draftedByLabel(player.id) : null}
+                tier={tierFor?.(player.id) ?? null}
+                auctionValue={auctionValueFor?.(player.id) ?? null}
                 onSelect={() => onSelect(player)}
               />
             </div>
