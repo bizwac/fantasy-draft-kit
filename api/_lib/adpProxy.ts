@@ -40,8 +40,11 @@ export async function proxyAdpRequest(params: URLSearchParams): Promise<AdpProxy
 
   let upstreamRes: Response;
   try {
+    // Edge runtime doesn't implement redirect:"error" (only "follow"/
+    // "manual") — "manual" resolves to an opaque-redirect response
+    // instead of following it, which we treat as a failure below.
     upstreamRes = await fetch(upstreamUrl, {
-      redirect: "error",
+      redirect: "manual",
       signal: AbortSignal.timeout(10000)
     });
   } catch (err) {
@@ -49,6 +52,14 @@ export async function proxyAdpRequest(params: URLSearchParams): Promise<AdpProxy
       status: 502,
       contentType: "application/json",
       body: JSON.stringify({ error: `Upstream fetch failed: ${(err as Error).message}` })
+    };
+  }
+
+  if (upstreamRes.type === "opaqueredirect") {
+    return {
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Upstream returned a redirect, refusing to follow it" })
     };
   }
 
