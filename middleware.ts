@@ -12,6 +12,15 @@ export const config = {
   matcher: "/(.*)"
 };
 
+// The browser's own PWA machinery (manifest link, service worker
+// registration/update check) fetches these without replaying cached
+// Basic Auth credentials the way a normal navigation does — they 401
+// silently instead of prompting, which breaks install/offline-refresh
+// even for an already-authenticated user. None of these leak anything
+// sensitive (brand assets + app shell code, no draft data), so they're
+// exempt from the gate; everything else, including /api, stays behind it.
+const PUBLIC_PATHS = /^\/(manifest\.webmanifest|sw\.js|registerSW\.js|workbox-[\w-]+\.js|brand\/.*\.png)$/;
+
 function unauthorized(): Response {
   return new Response("Authentication required", {
     status: 401,
@@ -20,6 +29,11 @@ function unauthorized(): Response {
 }
 
 export default function middleware(request: Request): Response | undefined {
+  const { pathname } = new URL(request.url);
+  if (PUBLIC_PATHS.test(pathname)) {
+    return undefined;
+  }
+
   const expectedUser = process.env.BASIC_AUTH_USER;
   const expectedPass = process.env.BASIC_AUTH_PASS;
 
