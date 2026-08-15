@@ -4,6 +4,14 @@
 **Purpose:** A complete, hand-off-ready specification for Claude Code to implement a personal fantasy football **draft-day kit**.
 **Version:** 1.0 — August 2026 (targets the 2026 NFL season)
 
+> **Amendment (2026-08-15):** The "no Yahoo, no backend" decision below (§2.6, §10 #3) has been
+> reversed — Brandon has applied for Yahoo Fantasy API access (approval pending) and wants Yahoo
+> integration built once it's granted. Separately, a minimal backend already exists ahead of that:
+> a single Vercel serverless function (`api/adp.ts`) proxies Fantasy Football Calculator's ADP API,
+> which has no CORS headers and can't be called directly from the browser. The rest of the app
+> remains local-first (IndexedDB, offline draft board); Yahoo OAuth will be the second reason for
+> a server-side component once access arrives.
+
 ---
 
 ## 0. Read This First (Orientation for the Implementer)

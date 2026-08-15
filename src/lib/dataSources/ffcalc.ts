@@ -2,7 +2,10 @@ import { fetchWithTimeout } from "./fetchWithTimeout";
 import { FfcAdpResponseSchema, type FfcAdpPlayer } from "./schema";
 import type { ScoringFormat } from "@/lib/types";
 
-const BASE_URL = "https://fantasyfootballcalculator.com/api/v1/adp";
+// Fantasy Football Calculator's API sends no CORS headers, so the browser
+// can't call it directly (verified: curl succeeds, browser fetch is
+// blocked). /api/adp is a same-origin passthrough — see api/adp.ts.
+const BASE_URL = "/api/adp";
 
 const FORMAT_MAP: Record<ScoringFormat, string> = {
   ppr: "ppr",
@@ -45,7 +48,7 @@ export async function fetchAdp(options: {
   year: number;
 }): Promise<AdpEntry[]> {
   const format = FORMAT_MAP[options.scoring];
-  const url = `${BASE_URL}/${format}?teams=${options.teams}&year=${options.year}`;
+  const url = `${BASE_URL}?format=${format}&teams=${options.teams}&year=${options.year}`;
   const res = await fetchWithTimeout(url, 15000);
   if (!res.ok) throw new Error(`FFCalc ADP request failed (${res.status})`);
   const json = await res.json();
