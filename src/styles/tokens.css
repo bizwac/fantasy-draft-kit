@@ -1,0 +1,68 @@
+/*
+  Fade Signal design tokens.
+  Brand colors (spec §6.1c): --ink #202327, --accent #E7A23B,
+  --accent-strong #CE8A28, --surface #F4F5F6.
+  Amber is a fill/accent, never body text on a light surface — pair it
+  with --accent-ink (ink-on-amber) for any text that sits on an amber fill.
+*/
+
+:root {
+  --ink: #202327;
+  --accent: #e7a23b;
+  --accent-strong: #ce8a28;
+  --accent-ink: #202327;
+
+  --surface: #f4f5f6;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e9ebed;
+  --border: rgba(32, 35, 39, 0.12);
+
+  --text-primary: #202327;
+  --text-secondary: rgba(32, 35, 39, 0.64);
+
+  --success: #2e8f5b;
+  --warning: #b5560f;
+  --danger: #c23b3b;
+  --info: #2f6fb0;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --surface: #202327;
+  --surface-raised: #2a2e33;
+  --surface-sunken: #17191c;
+  --border: rgba(244, 245, 246, 0.14);
+
+  --text-primary: #f4f5f6;
+  --text-secondary: rgba(244, 245, 246, 0.66);
+
+  --accent: #e7a23b;
+  --accent-strong: #f2b563;
+  --accent-ink: #202327;
+
+  --success: #4cb17d;
+  --warning: #e08a3e;
+  --danger: #e2685f;
+  --info: #6fa6dd;
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
