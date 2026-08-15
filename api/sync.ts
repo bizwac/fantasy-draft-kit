@@ -1,4 +1,11 @@
-import { pullBackup, pushBackup } from "./_lib/syncStore";
+// Node's own ESM loader resolves this import at runtime (Vercel's Node
+// function builder doesn't inline multi-file functions into one bundle
+// the way the Edge builder does) — and unlike TypeScript/bundler
+// resolution, Node's ESM loader requires the explicit extension on a
+// relative import. Omitting it here previously produced
+// ERR_MODULE_NOT_FOUND in production despite building and typechecking
+// fine locally (Bundler resolution mode doesn't require it).
+import { pullBackup, pushBackup } from "./_lib/syncStore.js";
 
 // Already gated by middleware.ts's Basic Auth (matches every route) —
 // no separate auth here, same as api/adp.ts.
