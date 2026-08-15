@@ -45,6 +45,28 @@ export async function applyProjectionImport(rows: MappedProjectionRow[]): Promis
     const updated: Player = { ...target, lastUpdated: new Date().toISOString() };
     if (row.projPoints !== null) updated.projPoints = row.projPoints;
     if (row.contractYear !== null) updated.contractYear = row.contractYear;
+    if (row.sosSeason !== null) updated.sosSeason = row.sosSeason;
+    if (row.sosPlayoffs !== null) updated.sosPlayoffs = row.sosPlayoffs;
+    if (row.snapPct !== null || row.targetShare !== null || row.rzTouches !== null) {
+      updated.usage = {
+        snapPct: row.snapPct ?? updated.usage?.snapPct ?? null,
+        targetShare: row.targetShare ?? updated.usage?.targetShare ?? null,
+        rzTouches: row.rzTouches ?? updated.usage?.rzTouches ?? null,
+        season: updated.usage?.season ?? null
+      };
+    }
+    // winningTeam (spec §4.13) fires only when both sub-signals are true;
+    // an import touching just one preserves the other's prior value.
+    if (row.teamWinningRecordLastYear !== null) updated.teamWinningRecordLastYear = row.teamWinningRecordLastYear;
+    if (row.teamProjectedWinning !== null) updated.teamProjectedWinning = row.teamProjectedWinning;
+    if (row.teamWinningRecordLastYear !== null || row.teamProjectedWinning !== null) {
+      updated.winningTeam =
+        updated.teamWinningRecordLastYear === true && updated.teamProjectedWinning === true
+          ? true
+          : updated.teamWinningRecordLastYear === false || updated.teamProjectedWinning === false
+            ? false
+            : null;
+    }
     updates.push(updated);
   }
 

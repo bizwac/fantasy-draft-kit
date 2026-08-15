@@ -6,6 +6,7 @@ import { locationForOverallPick, nextPickForSlot, rosterSlotCount } from "@/lib/
 import { addPick, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
 import { assignTiers, computeAuctionValues, computeVorp, replacementLevels, replacementRanks } from "@/lib/valueMetrics";
 import { buildRosterState } from "@/lib/rosterTracker";
+import { computeHandcuffs } from "@/lib/handcuff";
 import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
@@ -14,6 +15,9 @@ import DraftLogPanel from "@/components/draftBoard/DraftLogPanel";
 import ScarcityMeter from "@/components/draftBoard/ScarcityMeter";
 import TierAlertBanner from "@/components/draftBoard/TierAlertBanner";
 import RosterPanel from "@/components/draftBoard/RosterPanel";
+import PlayerDetailCard from "@/components/player/PlayerDetailCard";
+
+const OUT_STATUSES = new Set(["Out", "IR", "PUP", "Suspended"]);
 
 const POSITIONS: Array<Position | "ALL"> = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "K", "DST"];
@@ -41,8 +45,12 @@ export default function DraftBoard() {
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<Position | "ALL">("ALL");
   const [hideDrafted, setHideDrafted] = useState(false);
+  const [hideOutIR, setHideOutIR] = useState(false);
+  const [rookiesOnly, setRookiesOnly] = useState(false);
+  const [winningTeamOnly, setWinningTeamOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("adp");
   const [confirmingPlayer, setConfirmingPlayer] = useState<Player | null>(null);
+  const [detailPlayer, setDetailPlayer] = useState<Player | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
 
@@ -53,6 +61,8 @@ export default function DraftBoard() {
     for (const p of players ?? []) map.set(p.id, p);
     return map;
   }, [players]);
+
+  const handcuffs = useMemo(() => computeHandcuffs(players ?? []), [players]);
 
   // VORP/tiers/$ depend only on the player pool + this draft's settings,
   // never on picks.length — recomputing them on every pick would be both
@@ -94,7 +104,10 @@ export default function DraftBoard() {
     const sorted = players
       .filter((p) => (position === "ALL" ? true : p.position === position))
       .filter((p) => (query ? p.name.toLowerCase().includes(query) : true))
-      .filter((p) => (hideDrafted ? !draftedIds.has(p.id) : true));
+      .filter((p) => (hideDrafted ? !draftedIds.has(p.id) : true))
+      .filter((p) => (hideOutIR ? !(p.injuryStatus && OUT_STATUSES.has(p.injuryStatus)) : true))
+      .filter((p) => (rookiesOnly ? p.isRookie : true))
+      .filter((p) => (winningTeamOnly ? p.winningTeam === true : true));
 
     const rank = (p: Player): number => {
       switch (sortKey) {
@@ -117,7 +130,7 @@ export default function DraftBoard() {
       if (diff !== 0) return diff;
       return a.name.localeCompare(b.name);
     });
-  }, [players, search, position, hideDrafted, draftedIds, sortKey, metrics]);
+  }, [players, search, position, hideDrafted, hideOutIR, rookiesOnly, winningTeamOnly, draftedIds, sortKey, metrics]);
 
   if (!draft || !players || !metrics) {
     return <p className="text-text-secondary">Loading…</p>;
@@ -234,6 +247,18 @@ export default function DraftBoard() {
           <input type="checkbox" checked={hideDrafted} onChange={(e) => setHideDrafted(e.target.checked)} />
           Hide drafted
         </label>
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input type="checkbox" checked={hideOutIR} onChange={(e) => setHideOutIR(e.target.checked)} />
+          Hide Out/IR
+        </label>
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input type="checkbox" checked={rookiesOnly} onChange={(e) => setRookiesOnly(e.target.checked)} />
+          Rookies only
+        </label>
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input type="checkbox" checked={winningTeamOnly} onChange={(e) => setWinningTeamOnly(e.target.checked)} />
+          Winning teams only
+        </label>
       </div>
 
       <div className="flex-1 min-h-0">
@@ -244,6 +269,7 @@ export default function DraftBoard() {
           tierFor={(playerId) => metrics.tiers.get(playerId)?.tier ?? null}
           auctionValueFor={(playerId) => metrics.auctionValues.get(playerId) ?? null}
           onSelect={(player) => setConfirmingPlayer(player)}
+          onInfo={(player) => setDetailPlayer(player)}
         />
       </div>
 
@@ -270,6 +296,26 @@ export default function DraftBoard() {
       )}
 
       {rosterOpen && <RosterPanel roster={rosterState} onClose={() => setRosterOpen(false)} />}
+
+      {detailPlayer && (
+        <PlayerDetailCard
+          player={detailPlayer}
+          tier={metrics.tiers.get(detailPlayer.id)?.tier ?? null}
+          tierBasis={metrics.tiers.get(detailPlayer.id)?.basis ?? null}
+          vorp={metrics.vorp.get(detailPlayer.id) ?? null}
+          auctionValue={metrics.auctionValues.get(detailPlayer.id) ?? null}
+          handcuff={(() => {
+            // Spec §4.20: "on a starter's card, Handcuff: {backup}" — find
+            // the backup whose handcuffOfPlayerId points at this player.
+            for (const [backupId, starterId] of handcuffs) {
+              if (starterId === detailPlayer.id) return playersById.get(backupId) ?? null;
+            }
+            return null;
+          })()}
+          draftedByLabel={draftedIds.has(detailPlayer.id) ? draftedByLabel(detailPlayer.id) : null}
+          onClose={() => setDetailPlayer(null)}
+        />
+      )}
     </div>
   );
 }

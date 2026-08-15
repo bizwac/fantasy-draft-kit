@@ -183,17 +183,20 @@ function ProjectionsImportCard({
     setHeaders(result.headers);
     setRows(result.rows);
     setParseErrors(result.errors);
-    const guessedName = result.headers.find((h) => /name/i.test(h)) ?? result.headers[0] ?? "";
-    const guessedProj = result.headers.find((h) => /(proj|pts|points|fpts)/i.test(h));
-    const guessedTeam = result.headers.find((h) => /^team$|^tm$/i.test(h));
-    const guessedPos = result.headers.find((h) => /^pos(ition)?$/i.test(h));
-    const guessedContract = result.headers.find((h) => /contract/i.test(h));
+    const find = (re: RegExp) => result.headers.find((h) => re.test(h));
     setMapping({
-      name: guessedName,
-      projPoints: guessedProj,
-      team: guessedTeam,
-      position: guessedPos,
-      contractYear: guessedContract
+      name: find(/name/i) ?? result.headers[0] ?? "",
+      projPoints: find(/(proj|pts|points|fpts)/i),
+      team: find(/^team$|^tm$/i),
+      position: find(/^pos(ition)?$/i),
+      contractYear: find(/contract/i),
+      teamWinningRecordLastYear: find(/last.?year.?win|2025.?record|prior.?record/i),
+      teamProjectedWinning: find(/proj.*win|win.?total|vegas/i),
+      sosSeason: find(/sos.?season|strength.?of.?schedule$/i),
+      sosPlayoffs: find(/sos.?playoff|playoff.?sos/i),
+      snapPct: find(/snap/i),
+      targetShare: find(/target.?share/i),
+      rzTouches: find(/rz|red.?zone/i)
     });
   }
 
@@ -213,10 +216,11 @@ function ProjectionsImportCard({
   return (
     <section className="card p-5 flex flex-col gap-4">
       <div>
-        <h2 className="font-display font-semibold">Projections import</h2>
+        <h2 className="font-display font-semibold">Player data import</h2>
         <p className="text-sm text-text-secondary">
-          No free projections API exists — export a CSV (e.g. from FantasyPros) and import it here. Only touches
-          projection points and contract-year status; everything else stays as Sleeper/ADP loaded it.
+          Projections, contract year, winning-team signals, strength of schedule, and usage stats have no free API —
+          export a CSV (e.g. from FantasyPros or nflverse) and import it here. Only touches the columns you map;
+          everything else stays as Sleeper/ADP loaded it.
         </p>
         {lastImportAt && (
           <p className="text-xs text-text-secondary mt-1">Last imported {new Date(lastImportAt).toLocaleString()}</p>
@@ -263,6 +267,25 @@ function ProjectionsImportCard({
             <ColumnSelect label="Team" headers={headers} value={mapping.team} onChange={(v) => setMapping((m) => ({ ...m, team: v }))} allowNone />
             <ColumnSelect label="Position" headers={headers} value={mapping.position} onChange={(v) => setMapping((m) => ({ ...m, position: v }))} allowNone />
             <ColumnSelect label="Contract year" headers={headers} value={mapping.contractYear} onChange={(v) => setMapping((m) => ({ ...m, contractYear: v }))} allowNone />
+            <ColumnSelect
+              label="Team won last year (2025)"
+              headers={headers}
+              value={mapping.teamWinningRecordLastYear}
+              onChange={(v) => setMapping((m) => ({ ...m, teamWinningRecordLastYear: v }))}
+              allowNone
+            />
+            <ColumnSelect
+              label="Team projected winning (2026)"
+              headers={headers}
+              value={mapping.teamProjectedWinning}
+              onChange={(v) => setMapping((m) => ({ ...m, teamProjectedWinning: v }))}
+              allowNone
+            />
+            <ColumnSelect label="SoS (season)" headers={headers} value={mapping.sosSeason} onChange={(v) => setMapping((m) => ({ ...m, sosSeason: v }))} allowNone />
+            <ColumnSelect label="SoS (playoff weeks)" headers={headers} value={mapping.sosPlayoffs} onChange={(v) => setMapping((m) => ({ ...m, sosPlayoffs: v }))} allowNone />
+            <ColumnSelect label="Snap %" headers={headers} value={mapping.snapPct} onChange={(v) => setMapping((m) => ({ ...m, snapPct: v }))} allowNone />
+            <ColumnSelect label="Target share" headers={headers} value={mapping.targetShare} onChange={(v) => setMapping((m) => ({ ...m, targetShare: v }))} allowNone />
+            <ColumnSelect label="Red-zone touches" headers={headers} value={mapping.rzTouches} onChange={(v) => setMapping((m) => ({ ...m, rzTouches: v }))} allowNone />
           </div>
           <button type="button" className="btn-primary self-start" onClick={handleApply} disabled={!mapping.name || importing}>
             {importing ? "Importing…" : "Apply Import"}
