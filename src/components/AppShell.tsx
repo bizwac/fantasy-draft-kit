@@ -26,14 +26,14 @@ export default function AppShell() {
       <header className="md:hidden flex items-center justify-between px-4 py-2 border-b border-border print:hidden">
         <picture>
           <source srcSet={logoDark} media="(prefers-color-scheme: dark)" />
-          <img src={logoLight} alt="Fade Signal" className="h-6 w-auto" />
+          <img src={logoLight} alt="Fade Signal" className="h-8 w-auto" />
         </picture>
         <OnlineBadge online={online} />
       </header>
 
       <nav className="hidden md:flex md:flex-col md:w-56 shrink-0 border-r border-border p-4 gap-6 print:hidden">
-        <img src={logoDark} alt="Fade Signal" className="h-7 w-auto self-start hidden dark:block" />
-        <img src={logoLight} alt="Fade Signal" className="h-7 w-auto self-start dark:hidden" />
+        <img src={logoDark} alt="Fade Signal" className="h-10 w-auto self-start hidden dark:block" />
+        <img src={logoLight} alt="Fade Signal" className="h-10 w-auto self-start dark:hidden" />
         <ul className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>
