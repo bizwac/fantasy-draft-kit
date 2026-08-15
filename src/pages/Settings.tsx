@@ -48,6 +48,16 @@ export default function Settings() {
             }}
           />
         </label>
+
+        <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
+          <input
+            type="checkbox"
+            checked={timerSettings.soundEnabled}
+            disabled={!timerSettings.enabled}
+            onChange={(e) => update({ soundEnabled: e.target.checked })}
+          />
+          Play a sound when time's up
+        </label>
       </section>
     </div>
   );

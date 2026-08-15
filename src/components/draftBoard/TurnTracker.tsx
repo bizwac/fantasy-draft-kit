@@ -32,7 +32,11 @@ export default function TurnTracker({
           Round {onClock.round}, Slot {onClock.slotInRound}
         </span>
         {timerSettings.enabled && (
-          <OnClockTimer durationSeconds={timerSettings.durationSeconds} resetSignal={onClock.overall} />
+          <OnClockTimer
+            durationSeconds={timerSettings.durationSeconds}
+            resetSignal={onClock.overall}
+            soundEnabled={timerSettings.soundEnabled}
+          />
         )}
       </div>
 

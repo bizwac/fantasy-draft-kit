@@ -3,9 +3,10 @@ const STORAGE_KEY = "fade-signal:timerSettings";
 export interface TimerSettings {
   enabled: boolean;
   durationSeconds: number;
+  soundEnabled: boolean;
 }
 
-const DEFAULT: TimerSettings = { enabled: false, durationSeconds: 90 };
+const DEFAULT: TimerSettings = { enabled: false, durationSeconds: 90, soundEnabled: true };
 
 export function loadTimerSettings(): TimerSettings {
   try {
