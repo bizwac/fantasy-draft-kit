@@ -2,6 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Link, useNavigate } from "react-router-dom";
 import { db } from "@/lib/db";
 import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
+import { rosterSlotCount } from "@/lib/draftMath";
 import type { Draft } from "@/lib/types";
 
 export default function Home() {
@@ -40,7 +41,7 @@ export default function Home() {
 }
 
 function DraftCard({ draft }: { draft: Draft }) {
-  const total = draft.settings.teams * totalRosterSize(draft);
+  const total = draft.settings.teams * rosterSlotCount(draft.settings.rosterSlots);
   const picked = draft.picks.length;
 
   async function handleDuplicate(e: React.MouseEvent) {
@@ -78,22 +79,6 @@ function DraftCard({ draft }: { draft: Draft }) {
         </div>
       </Link>
     </li>
-  );
-}
-
-function totalRosterSize(draft: Draft): number {
-  const slots = draft.settings.rosterSlots;
-  return (
-    slots.QB +
-    slots.RB +
-    slots.WR +
-    slots.TE +
-    slots.FLEX +
-    (slots.SUPERFLEX ?? 0) +
-    slots.K +
-    slots.DST +
-    slots.BENCH +
-    (slots.IR ?? 0)
   );
 }
 
