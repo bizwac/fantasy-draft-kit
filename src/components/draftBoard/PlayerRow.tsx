@@ -1,14 +1,6 @@
 import type { Player } from "@/lib/types";
 import { COL } from "./playerListColumns";
-
-const POSITION_COLOR: Record<Player["position"], string> = {
-  QB: "var(--info)",
-  RB: "var(--success)",
-  WR: "var(--accent)",
-  TE: "var(--warning)",
-  K: "var(--text-secondary)",
-  DST: "var(--text-secondary)"
-};
+import { POSITION_COLOR } from "@/lib/positionColors";
 
 export default function PlayerRow({
   player,

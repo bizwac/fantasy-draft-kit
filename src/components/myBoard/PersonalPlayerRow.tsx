@@ -1,14 +1,7 @@
 import { useState } from "react";
+import type { HTMLAttributes } from "react";
 import type { Player, PersonalOverride } from "@/lib/types";
-
-const POSITION_COLOR: Record<Player["position"], string> = {
-  QB: "var(--info)",
-  RB: "var(--success)",
-  WR: "var(--accent)",
-  TE: "var(--warning)",
-  K: "var(--text-secondary)",
-  DST: "var(--text-secondary)"
-};
+import { POSITION_COLOR } from "@/lib/positionColors";
 
 export default function PersonalPlayerRow({
   player,
@@ -23,7 +16,7 @@ export default function PersonalPlayerRow({
   player: Player;
   override: PersonalOverride | undefined;
   rank?: number;
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  dragHandleProps?: HTMLAttributes<HTMLButtonElement>;
   onToggleFavorite: () => void;
   onToggleDoNotDraft: () => void;
   onSaveNote: (note: string) => void;

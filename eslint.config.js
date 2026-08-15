@@ -12,8 +12,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2022,
-      sourceType: "module",
-      globals: { window: "readonly", document: "readonly", navigator: "readonly", crypto: "readonly" }
+      sourceType: "module"
     },
     plugins: {
       "@typescript-eslint": tseslint,
@@ -25,7 +24,16 @@ export default [
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }]
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      // TS already catches genuine undefined identifiers, and does it
+      // correctly for ambient DOM/lib types and globals — no-undef is
+      // ESLint's own documented false-positive source in TS projects.
+      // This file previously hand-maintained a globals list (window/
+      // document/navigator/crypto) that silently missed fetch,
+      // localStorage, File, Response, process, React's ambient JSX
+      // namespace, and more — 54 false-positive errors by the time
+      // anyone actually ran `npm run lint`.
+      "no-undef": "off"
     }
   }
 ];

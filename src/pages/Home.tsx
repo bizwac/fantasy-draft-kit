@@ -1,4 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import type { MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { db } from "@/lib/db";
 import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
@@ -44,12 +45,12 @@ function DraftCard({ draft }: { draft: Draft }) {
   const total = draft.settings.teams * rosterSlotCount(draft.settings.rosterSlots);
   const picked = draft.picks.length;
 
-  async function handleDuplicate(e: React.MouseEvent) {
+  async function handleDuplicate(e: MouseEvent) {
     e.preventDefault();
     await duplicateDraft(draft.id);
   }
 
-  async function handleDelete(e: React.MouseEvent) {
+  async function handleDelete(e: MouseEvent) {
     e.preventDefault();
     if (confirm(`Delete "${draft.name}"? This can't be undone.`)) {
       await deleteDraft(draft.id);

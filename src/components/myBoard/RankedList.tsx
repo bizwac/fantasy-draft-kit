@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import type { HTMLAttributes, PointerEvent, ReactNode } from "react";
 
 // Pointer-events-based drag reorder — not HTML5 drag-and-drop, which
 // doesn't fire from touch on iPad Safari at all. Unifies mouse + touch
@@ -13,7 +14,7 @@ export default function RankedList<T>({
 }: {
   items: T[];
   getId: (item: T) => string;
-  renderItem: (item: T, index: number, dragHandleProps: React.HTMLAttributes<HTMLButtonElement>) => React.ReactNode;
+  renderItem: (item: T, index: number, dragHandleProps: HTMLAttributes<HTMLButtonElement>) => ReactNode;
   onReorder: (orderedIds: string[]) => void;
 }) {
   const [order, setOrder] = useState<string[]>(() => items.map(getId));
@@ -33,7 +34,7 @@ export default function RankedList<T>({
 
   const itemsById = new Map(items.map((item) => [getId(item), item]));
 
-  function handlePointerDown(id: string, e: React.PointerEvent<HTMLButtonElement>) {
+  function handlePointerDown(id: string, e: PointerEvent<HTMLButtonElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     setDraggingId(id);
     dragStartY.current = e.clientY;
@@ -41,7 +42,7 @@ export default function RankedList<T>({
     setDragOffsetY(0);
   }
 
-  function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+  function handlePointerMove(e: PointerEvent<HTMLButtonElement>) {
     if (!draggingId) return;
     setDragOffsetY(e.clientY - dragStartY.current);
 

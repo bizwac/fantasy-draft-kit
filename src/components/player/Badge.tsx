@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 const TONE_COLOR: Record<string, string> = {
   danger: "var(--danger)",
   warning: "var(--warning)",
@@ -11,7 +13,7 @@ export default function Badge({
   children
 }: {
   tone: "danger" | "warning" | "success" | "info" | "neutral";
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <span

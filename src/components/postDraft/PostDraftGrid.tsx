@@ -1,13 +1,5 @@
 import type { PostDraftGrid as Grid } from "@/lib/postDraft";
-
-const POSITION_COLOR: Record<string, string> = {
-  QB: "var(--info)",
-  RB: "var(--success)",
-  WR: "var(--accent)",
-  TE: "var(--warning)",
-  K: "var(--text-secondary)",
-  DST: "var(--text-secondary)"
-};
+import { POSITION_COLOR } from "@/lib/positionColors";
 
 export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: Grid; teamNames: string[]; myTeamSlot: number }) {
   return (
