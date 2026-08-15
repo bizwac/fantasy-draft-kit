@@ -1,17 +1,21 @@
 import type { PickLocation } from "@/lib/draftMath";
+import type { TimerSettings } from "@/lib/timerSettings";
+import OnClockTimer from "./OnClockTimer";
 
 export default function TurnTracker({
   onClock,
   onClockTeamName,
   isMyTurn,
   myNextPick,
-  picksUntilMine
+  picksUntilMine,
+  timerSettings
 }: {
   onClock: PickLocation;
   onClockTeamName: string;
   isMyTurn: boolean;
   myNextPick: PickLocation | null;
   picksUntilMine: number | null;
+  timerSettings: TimerSettings;
 }) {
   return (
     <div
@@ -27,6 +31,9 @@ export default function TurnTracker({
         <span className="text-text-secondary text-sm">
           Round {onClock.round}, Slot {onClock.slotInRound}
         </span>
+        {timerSettings.enabled && (
+          <OnClockTimer durationSeconds={timerSettings.durationSeconds} resetSignal={onClock.overall} />
+        )}
       </div>
 
       {isMyTurn ? (

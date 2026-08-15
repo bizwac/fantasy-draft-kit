@@ -6,6 +6,7 @@ import DataRefresh from "@/pages/DataRefresh";
 import MyBoard from "@/pages/MyBoard";
 import DraftBoard from "@/pages/DraftBoard";
 import PostDraft from "@/pages/PostDraft";
+import Settings from "@/pages/Settings";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/draft/:id/results" element={<PostDraft />} />
         <Route path="/refresh" element={<DataRefresh />} />
         <Route path="/my-board" element={<MyBoard />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>
   );

@@ -7,7 +7,8 @@ import logoDark from "@/assets/brand/lockup-dark.png";
 const NAV_ITEMS = [
   { to: "/", label: "Drafts", end: true },
   { to: "/refresh", label: "Data Refresh" },
-  { to: "/my-board", label: "My Board" }
+  { to: "/my-board", label: "My Board" },
+  { to: "/settings", label: "Settings" }
 ];
 
 function navLinkClass(isActive: boolean) {
