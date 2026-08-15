@@ -14,39 +14,53 @@ function renderCell(
   }
 ): ReactNode {
   const { player, drafted, draftedByLabel, tier, auctionValue } = ctx;
+  // The returned element is used directly as a React list item (see the
+  // .map() in PlayerRow below) — it must carry `key` itself. An extra
+  // wrapping <span> here would become the actual flex item instead of
+  // this width/shrink-classed one, silently breaking alignment with
+  // PlayerListHeader's cells.
   const wrapperClass = columnWrapperClass(COLUMN_DEFS[key]);
   switch (key) {
     case "injury":
       return (
-        <span className={`text-xs font-semibold text-danger ${wrapperClass}`} title={player.injuryStatus ?? undefined}>
+        <span key={key} className={`text-xs font-semibold text-danger ${wrapperClass}`} title={player.injuryStatus ?? undefined}>
           {player.injuryStatus?.slice(0, 1) ?? ""}
         </span>
       );
     case "adp":
       return (
-        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
           {player.adp !== null ? player.adp.toFixed(1) : "—"}
         </span>
       );
     case "rank":
       return (
-        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>{player.overallRank ?? "—"}</span>
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+          {player.overallRank ?? "—"}
+        </span>
       );
     case "bye":
       return (
-        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>{player.byeWeek ?? "—"}</span>
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+          {player.byeWeek ?? "—"}
+        </span>
       );
     case "rookie":
       return (
-        <span className={`text-xs font-semibold text-info ${wrapperClass}`} title="Rookie">
+        <span key={key} className={`text-xs font-semibold text-info ${wrapperClass}`} title="Rookie">
           {player.isRookie ? "R" : ""}
         </span>
       );
     case "team":
-      return <span className={`text-sm text-text-secondary ${wrapperClass}`}>{player.team}</span>;
+      return (
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass}`}>
+          {player.team}
+        </span>
+      );
     case "tier":
       return (
         <span
+          key={key}
           className={`text-xs font-medium text-text-secondary ${wrapperClass} tabular-nums`}
           title={tier != null ? `Tier ${tier}` : undefined}
         >
@@ -55,13 +69,13 @@ function renderCell(
       );
     case "value":
       return (
-        <span className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`} title="Estimated auction value">
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`} title="Estimated auction value">
           {auctionValue != null ? `$${Math.round(auctionValue)}` : "—"}
         </span>
       );
     case "draftedBy":
       return (
-        <span className={`text-xs text-text-secondary ${wrapperClass} truncate`}>
+        <span key={key} className={`text-xs text-text-secondary ${wrapperClass} truncate`}>
           {drafted && draftedByLabel ? draftedByLabel : ""}
         </span>
       );
@@ -120,9 +134,7 @@ export default function PlayerRow({
             <BanIcon />
           </span>
         )}
-        {columns.map((key) => (
-          <span key={key}>{renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue })}</span>
-        ))}
+        {columns.map((key) => renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue }))}
       </button>
       <button
         type="button"
