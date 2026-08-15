@@ -1,14 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import mkcert from "vite-plugin-mkcert";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
+    // Yahoo OAuth requires an HTTPS redirect URI even for localhost.
+    command === "serve" && mkcert(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["brand/icon-mono-512.png"],
@@ -40,4 +43,4 @@ export default defineConfig({
       "@": path.resolve(dirname, "./src")
     }
   }
-});
+}));
