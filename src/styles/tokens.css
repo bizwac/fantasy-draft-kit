@@ -25,6 +25,19 @@
   --danger: #c23b3b;
   --info: #2f6fb0;
 
+  /* Ink-on-color pairings, one per semantic color, mirroring
+     --accent-ink: these fills are medium/dark in light mode (white text
+     reads well) but flip lighter in dark mode below (dark ink reads
+     well instead) — a single fixed text color across both themes is
+     what made every tile but WR's amber (which never changes) hard to
+     read. */
+  --success-ink: #ffffff;
+  --warning-ink: #ffffff;
+  --danger-ink: #ffffff;
+  --info-ink: #ffffff;
+  --neutral: #5c6066;
+  --neutral-ink: #ffffff;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -56,6 +69,13 @@
   --warning: #e08a3e;
   --danger: #e2685f;
   --info: #6fa6dd;
+
+  --success-ink: #202327;
+  --warning-ink: #202327;
+  --danger-ink: #202327;
+  --info-ink: #202327;
+  --neutral: #8a9099;
+  --neutral-ink: #202327;
 
   color-scheme: dark;
 }

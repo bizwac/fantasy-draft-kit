@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Player } from "@/lib/types";
 import { COLUMN_DEFS, columnWrapperClass, type ColumnKey } from "./playerListColumns";
-import { POSITION_COLOR } from "@/lib/positionColors";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 function renderCell(
   key: ColumnKey,
@@ -122,7 +122,7 @@ export default function PlayerRow({
       >
         <span
           className="text-xs font-semibold w-8 sm:w-9 shrink-0 text-center rounded px-1 py-0.5"
-          style={{ backgroundColor: POSITION_COLOR[player.position], color: "var(--accent-ink)" }}
+          style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
         >
           {player.position}
         </span>

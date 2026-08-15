@@ -1,5 +1,5 @@
 import type { PostDraftGrid as Grid } from "@/lib/postDraft";
-import { POSITION_COLOR } from "@/lib/positionColors";
+import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
 export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: Grid; teamNames: string[]; myTeamSlot: number }) {
   return (
@@ -42,7 +42,7 @@ export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: G
                       <div className="flex items-center gap-1.5">
                         <span
                           className="text-[10px] font-semibold px-1 rounded"
-                          style={{ backgroundColor: POSITION_COLOR[cell.player.position], color: "var(--accent-ink)" }}
+                          style={{ backgroundColor: POSITION_COLOR[cell.player.position], color: POSITION_TEXT_COLOR[cell.player.position] }}
                         >
                           {cell.player.position}
                         </span>
