@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { locationForOverallPick, nextPickForSlot, rosterSlotCount } from "@/lib/draftMath";
@@ -168,13 +168,19 @@ export default function DraftBoard() {
     overridesById
   ]);
 
+  const isDraftOver = draft ? draft.picks.length >= draft.settings.teams * rosterSlotCount(draft.settings.rosterSlots) : false;
+  useEffect(() => {
+    if (draft && isDraftOver && draft.status !== "complete") {
+      db.drafts.update(draft.id, { status: "complete" });
+    }
+  }, [draft, isDraftOver]);
+
   if (!draft || !players || !metrics) {
     return <p className="text-text-secondary">Loading…</p>;
   }
 
   const totalRounds = rosterSlotCount(draft.settings.rosterSlots);
   const onClock = locationForOverallPick(draft.picks.length + 1, draft.settings.teams);
-  const isDraftOver = onClock.overall > draft.settings.teams * totalRounds;
   const onClockTeamName = draft.settings.teamNames[onClock.teamSlot - 1] ?? `Team ${onClock.teamSlot}`;
   const isMyTurn = !isDraftOver && onClock.teamSlot === draft.settings.myDraftSlot;
   const myNextOverall = nextPickForSlot(draft.settings.myDraftSlot, draft.settings.teams, totalRounds, draft.picks.length);
@@ -226,11 +232,19 @@ export default function DraftBoard() {
           <button type="button" className="btn-secondary text-sm" onClick={() => setLogOpen(true)}>
             Draft Log
           </button>
+          <Link to={`/draft/${id}/results`} className="btn-secondary text-sm">
+            Results
+          </Link>
         </div>
       </div>
 
       {isDraftOver ? (
-        <div className="card p-6 text-center">Draft complete — every roster spot has been picked.</div>
+        <div className="card p-6 text-center flex flex-col items-center gap-3">
+          <p>Draft complete — every roster spot has been picked.</p>
+          <Link to={`/draft/${id}/results`} className="btn-primary">
+            View Results
+          </Link>
+        </div>
       ) : (
         <>
           <TurnTracker

@@ -56,7 +56,12 @@ function DraftCard({ draft }: { draft: Draft }) {
     }
   }
 
-  const to = draft.status === "setup" ? `/draft/${draft.id}/setup` : `/draft/${draft.id}/board`;
+  const to =
+    draft.status === "setup"
+      ? `/draft/${draft.id}/setup`
+      : draft.status === "complete"
+        ? `/draft/${draft.id}/results`
+        : `/draft/${draft.id}/board`;
 
   return (
     <li>
