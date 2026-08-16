@@ -264,7 +264,7 @@ export default function DraftBoard() {
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 h-full" style={{ paddingTop: "var(--content-pt)" }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-display font-semibold truncate flex items-center gap-2">
           {draft.name}

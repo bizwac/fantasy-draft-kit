@@ -129,13 +129,23 @@ export default function AppShell() {
       </nav>
 
       <main
-        className="flex-1 min-w-0 overflow-y-auto bg-surface p-4 md:p-8"
+        className="flex-1 min-w-0 overflow-y-auto bg-surface px-4 md:px-8"
         style={{
-          // Same defensive floor as the sidebar (see its own comment) —
-          // this is what was missing here, leaving content like Home's
-          // "New Draft"/"New Mock Draft" buttons sitting right under the
-          // iPad status bar in standalone landscape.
-          paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // No padding-top here on purpose, despite the horizontal/bottom
+          // padding right above — padding on a scroll container only
+          // reserves space while scrollTop is 0. Once scrolled, that gap
+          // is gone, so a sticky child (PageHeader) positioned to land
+          // right at the padding edge leaves the padding's own height
+          // uncovered — not empty background, but fair game for whatever
+          // content is currently scrolling through those pixels (this is
+          // what showed up as scrolled-past card content bleeding through
+          // above the title). --content-pt is applied by PageHeader
+          // itself instead, whose own solid background then genuinely
+          // covers it. Pages without a PageHeader (just DraftBoard) apply
+          // --content-pt directly on their own root — it's exposed as a
+          // variable here specifically so every consumer always matches
+          // this exact value regardless of the safe-area formula.
+          ["--content-pt" as string]: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
           paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))"
         }}
         onScroll={handleMainScroll}
