@@ -167,7 +167,22 @@ export interface ImportSummary {
 // single authoritative snapshot (unlike personalRankings, which
 // accumulates small edits from multiple points), so "restore" means put
 // back exactly what was exported, not field-merge with what's there now.
-export async function importPersonalData(json: unknown): Promise<ImportSummary> {
+//
+// `protectNewerDrafts` guards the automatic background pull (see
+// cloudSync.ts's startAutoPull) against a real race: a pick pushes to
+// the cloud ~3s after it's made (debounced), but the presentation view
+// polls the cloud every 5s — if that poll lands in the gap, it fetches a
+// snapshot that doesn't have the just-made pick yet and, on a full
+// overwrite, would erase it from the *shared* local IndexedDB (both
+// tabs read the same origin's storage), undoing the pick the drafter
+// just watched land. Skipping any draft whose incoming pick count would
+// go backwards closes that window; the explicit "Restore from Cloud"
+// button (a deliberate, one-off user action) keeps the unguarded full
+// overwrite, since there the user does mean "put back exactly this".
+export async function importPersonalData(
+  json: unknown,
+  options?: { protectNewerDrafts?: boolean }
+): Promise<ImportSummary> {
   const parsed = PersonalDataExportSchema.safeParse(json);
   if (!parsed.success) {
     return { merged: 0, draftsRestored: 0, errors: ["File isn't a valid Fade Signal personal-data export."] };
@@ -183,7 +198,14 @@ export async function importPersonalData(json: unknown): Promise<ImportSummary> 
 
   await db.personalRankings.bulkPut([...byId.values()]);
 
-  const drafts = parsed.data.drafts ?? [];
+  let drafts = parsed.data.drafts ?? [];
+  if (options?.protectNewerDrafts && drafts.length > 0) {
+    const existingDrafts = await db.drafts.bulkGet(drafts.map((d) => d.id));
+    drafts = drafts.filter((incoming, i) => {
+      const local = existingDrafts[i];
+      return !local || incoming.picks.length >= local.picks.length;
+    });
+  }
   if (drafts.length > 0) {
     await db.drafts.bulkPut(drafts);
   }

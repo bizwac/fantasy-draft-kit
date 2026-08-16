@@ -68,7 +68,9 @@ export async function pushBackupToCloud(): Promise<{ ok: boolean; error?: string
 // startAutoPull) instead of only from an explicit user action.
 let isApplyingRemoteData = false;
 
-export async function pullBackupFromCloud(): Promise<{ ok: boolean; summary?: ImportSummary; error?: string }> {
+export async function pullBackupFromCloud(
+  options?: { protectNewerDrafts?: boolean }
+): Promise<{ ok: boolean; summary?: ImportSummary; error?: string }> {
   try {
     const res = await fetch("/api/sync", { method: "GET" });
     if (res.status === 404) {
@@ -82,7 +84,7 @@ export async function pullBackupFromCloud(): Promise<{ ok: boolean; summary?: Im
     isApplyingRemoteData = true;
     let summary: ImportSummary;
     try {
-      summary = await importPersonalData(json);
+      summary = await importPersonalData(json, options);
     } finally {
       isApplyingRemoteData = false;
     }
@@ -153,7 +155,7 @@ export function startAutoPull(intervalMs: number): () => void {
   pollTimer = setInterval(() => {
     if (document.visibilityState !== "visible") return;
     if (!navigator.onLine) return;
-    void pullBackupFromCloud();
+    void pullBackupFromCloud({ protectNewerDrafts: true });
   }, intervalMs);
   return stopAutoPull;
 }
