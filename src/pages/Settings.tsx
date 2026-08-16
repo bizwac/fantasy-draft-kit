@@ -6,6 +6,7 @@ import { scheduleCloudPush } from "@/lib/cloudSync";
 import { getStorageEstimate } from "@/lib/persistence";
 import { refreshPlayerData, type RefreshResult } from "@/lib/dataSources/refresh";
 import { refreshSeasonStats, type SeasonStatsRefreshResult } from "@/lib/dataSources/refreshSeasonStats";
+import { refreshHuddlePlayerIndex } from "@/lib/dataSources/huddlePlayers";
 import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshStatus } from "@/lib/refreshStatus";
 import type { ScoringFormat } from "@/lib/types";
 import { db } from "@/lib/db";
@@ -39,11 +40,16 @@ export default function Settings() {
   const [seasonStatsCount, setSeasonStatsCount] = useState<number | null>(null);
   const seasons = [year - 1, year - 2, year - 3];
 
+  const [huddleRefreshing, setHuddleRefreshing] = useState(false);
+  const [huddleError, setHuddleError] = useState<string | null>(null);
+  const [huddleCount, setHuddleCount] = useState<number | null>(null);
+
   useEffect(() => {
     getStorageEstimate().then(setStorage);
     db.players.count().then(setPlayerCount);
     db.seasonStats.count().then(setSeasonStatsCount);
-  }, [lastResult, statsResult]);
+    db.huddlePlayers.count().then(setHuddleCount);
+  }, [lastResult, statsResult, huddleRefreshing]);
 
   async function handleSeasonStatsRefresh() {
     setStatsRefreshing(true);
@@ -55,6 +61,21 @@ export default function Settings() {
       saveRefreshStatus(next);
     } finally {
       setStatsRefreshing(false);
+    }
+  }
+
+  async function handleHuddleIndexRefresh() {
+    setHuddleRefreshing(true);
+    setHuddleError(null);
+    try {
+      await refreshHuddlePlayerIndex();
+      const next = { ...refreshStatus, lastHuddleIndexRefreshAt: new Date().toISOString() };
+      setRefreshStatus(next);
+      saveRefreshStatus(next);
+    } catch (err) {
+      setHuddleError((err as Error).message);
+    } finally {
+      setHuddleRefreshing(false);
     }
   }
 
@@ -202,6 +223,33 @@ export default function Settings() {
         {seasonStatsCount !== null && (
           <p className="text-sm text-text-secondary">{seasonStatsCount} players with historical stats stored.</p>
         )}
+      </section>
+
+      <section className="card p-5 flex flex-col gap-4">
+        <div>
+          <h2 className="font-display font-semibold">Player News Links</h2>
+          <p className="text-sm text-text-secondary">
+            Powers the "News &amp; Notes" button on player cards, which opens TheHuddle's player page in-app. Pulls
+            an index of active-roster players from TheHuddle's depth charts (not their news content) so each player
+            links to the right page. Auto-refreshes every 24h in the background — use this to update sooner (e.g.
+            after a trade or roster move right before a draft).
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn-primary" onClick={handleHuddleIndexRefresh} disabled={huddleRefreshing}>
+            {huddleRefreshing ? "Refreshing…" : "Refresh Player News Links"}
+          </button>
+          {refreshStatus.lastHuddleIndexRefreshAt && (
+            <span className="text-sm text-text-secondary">
+              Last refreshed {new Date(refreshStatus.lastHuddleIndexRefreshAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {huddleError && <p className="text-sm text-danger">{huddleError}</p>}
+
+        {huddleCount !== null && <p className="text-sm text-text-secondary">{huddleCount} players linked.</p>}
       </section>
 
       <ProjectionsImportCard

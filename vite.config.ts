@@ -5,6 +5,7 @@ import mkcert from "vite-plugin-mkcert";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { proxyAdpRequest } from "./api/_lib/adpProxy.ts";
+import { proxyHuddlePlayers } from "./api/_lib/huddleProxy.ts";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,10 +26,27 @@ function adpDevProxyPlugin(): Plugin {
   };
 }
 
+// Mirrors api/huddlePlayers.ts so `npm run dev` behaves the same as the
+// deployed Vercel function without needing `vercel dev`.
+function huddleDevProxyPlugin(): Plugin {
+  return {
+    name: "huddle-dev-proxy",
+    configureServer(server) {
+      server.middlewares.use("/api/huddlePlayers", async (_req, res) => {
+        const result = await proxyHuddlePlayers();
+        res.statusCode = result.status;
+        res.setHeader("Content-Type", result.contentType);
+        res.end(result.body);
+      });
+    }
+  };
+}
+
 export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     adpDevProxyPlugin(),
+    huddleDevProxyPlugin(),
     // Yahoo OAuth requires an HTTPS redirect URI even for localhost.
     command === "serve" && mkcert(),
     VitePWA({

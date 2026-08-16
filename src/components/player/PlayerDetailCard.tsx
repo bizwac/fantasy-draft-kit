@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import type { Player, PersonalOverride, ScoringFormat, SeasonStatLine } from "@/lib/types";
 import { depthChartLabel } from "@/lib/handcuff";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
+import { huddleNewsUrl } from "@/lib/dataSources/huddlePlayers";
+import { normalizeName } from "@/lib/dataSources/normalize";
 import Badge from "./Badge";
 
 function pointsForFormat(line: SeasonStatLine, scoring: ScoringFormat): number | null {
@@ -67,6 +69,11 @@ export default function PlayerDetailCard({
   const depthLabel = depthChartLabel(player);
   const [note, setNote] = useState(override?.note ?? "");
   const seasonStats = useLiveQuery(() => db.seasonStats.get(player.id), [player.id]);
+  const [newsOpen, setNewsOpen] = useState(false);
+  // Whether a News button shows at all: TheHuddle's depth-chart index
+  // only lists active-roster players, so a match here already implies
+  // "worth showing" — no separate rank cutoff needed on top of it.
+  const huddleEntry = useLiveQuery(() => db.huddlePlayers.get(normalizeName(player.name)), [player.name]);
 
   return (
     <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose} role="presentation">
@@ -173,6 +180,17 @@ export default function PlayerDetailCard({
           )}
         </div>
 
+        {huddleEntry && (
+          <button
+            type="button"
+            onClick={() => setNewsOpen(true)}
+            className="text-left rounded-md bg-surface-sunken px-2.5 py-2 hover:bg-surface-raised transition-colors flex items-center justify-between gap-2"
+          >
+            <span className="text-sm font-medium">News &amp; Notes</span>
+            <span className="text-xs text-text-secondary">TheHuddle ↗</span>
+          </button>
+        )}
+
         <div>
           <h3 className="text-sm font-semibold text-text-secondary mb-1.5">Usage</h3>
           {player.isRookie && !player.usage ? (
@@ -203,6 +221,50 @@ export default function PlayerDetailCard({
 
         <p className="text-xs text-text-secondary">Data as of {new Date(player.lastUpdated).toLocaleString()}</p>
       </div>
+
+      {newsOpen && huddleEntry && (
+        <div
+          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            setNewsOpen(false);
+          }}
+          role="presentation"
+        >
+          <div
+            className="card w-full sm:max-w-2xl h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${player.name} news`}
+          >
+            <div className="flex items-center justify-between gap-3 p-3 border-b border-border shrink-0">
+              <h2 className="font-display text-base font-semibold truncate">{player.name} — News &amp; Notes</h2>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* A cross-origin iframe can't be feature-detected for "blocked" from
+                    here — this stays visible unconditionally as a guaranteed way out
+                    if the embed doesn't render for a given browser/site policy. */}
+                <a
+                  href={huddleNewsUrl(huddleEntry)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent-strong hover:underline"
+                >
+                  Open in new tab ↗
+                </a>
+                <button type="button" className="btn-secondary text-sm" onClick={() => setNewsOpen(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={huddleNewsUrl(huddleEntry)}
+              title={`${player.name} — TheHuddle`}
+              className="flex-1 w-full border-0"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

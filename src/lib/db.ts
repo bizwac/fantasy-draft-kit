@@ -1,11 +1,12 @@
 import Dexie, { type Table } from "dexie";
-import type { Draft, PersonalOverride, Player, PlayerSeasonStats } from "./types";
+import type { Draft, HuddlePlayerIndexEntry, PersonalOverride, Player, PlayerSeasonStats } from "./types";
 
 class FadeSignalDB extends Dexie {
   players!: Table<Player, string>;
   personalRankings!: Table<PersonalOverride, string>;
   drafts!: Table<Draft, string>;
   seasonStats!: Table<PlayerSeasonStats, string>;
+  huddlePlayers!: Table<HuddlePlayerIndexEntry, string>;
 
   constructor() {
     super("fade-signal");
@@ -22,6 +23,11 @@ class FadeSignalDB extends Dexie {
     // automatically every 24h) can never wipe it out from under a user.
     this.version(2).stores({
       seasonStats: "playerId"
+    });
+    // Maps a normalized player name to TheHuddle's own numeric player ID
+    // (needed to link to their per-player news page — see huddlePlayers.ts).
+    this.version(3).stores({
+      huddlePlayers: "nameKey"
     });
   }
 }

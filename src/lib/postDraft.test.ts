@@ -114,7 +114,7 @@ describe("computeReachesAndSteals", () => {
     const draft = makeDraft([makePick(20, 2, 1, "p1")], 1);
     // teams=1 forces round math irrelevant here; overall=20 stands in for pick number
     const summary = computeReachesAndSteals(draft, new Map([["p1", p1]]));
-    expect(summary[0].picks[0].valueVsAdp).toBe(5 - 20);
+    expect(summary[0].picks[0].valueVsAdp).toBe(20 - 5);
   });
 
   it("skips picks for players without ADP", () => {

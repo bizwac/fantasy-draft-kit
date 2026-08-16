@@ -72,6 +72,11 @@ export async function refreshPlayerData(settings: {
 
   const players = new Map<string, Player>();
   const matchIndex = new Map<string, string>(); // matchKey -> player id
+  // Defenses can't be name-matched: FFC lists them as "Denver Defense"
+  // (position "DEF"), Sleeper as "DEN DST" (position "DST") — no shared
+  // text between the two. Both sources do agree on team abbreviation, so
+  // DST alone matches by team code instead.
+  const dstByTeam = new Map<string, string>(); // normalized team -> player id
 
   try {
     const sleeperPlayers = await fetchSleeperPlayers();
@@ -79,6 +84,7 @@ export async function refreshPlayerData(settings: {
       const player = emptyPlayer(sp);
       players.set(player.id, player);
       matchIndex.set(playerMatchKey(sp.name, sp.position), sp.id);
+      if (sp.position === "DST") dstByTeam.set(normalizeTeam(sp.team), sp.id);
     }
     sleeperOutcome = { ok: true, count: sleeperPlayers.length, error: null, at };
 
@@ -107,14 +113,15 @@ export async function refreshPlayerData(settings: {
     const positionCounters = new Map<string, number>();
 
     ranked.forEach((entry, index) => {
-      const key = playerMatchKey(entry.name, entry.position);
-      const playerId = matchIndex.get(key);
+      const isDst = entry.position === "DEF";
+      const playerId = isDst ? dstByTeam.get(normalizeTeam(entry.team)) : matchIndex.get(playerMatchKey(entry.name, entry.position));
       if (!playerId) return;
       const player = players.get(playerId);
       if (!player) return;
 
-      const posCount = (positionCounters.get(entry.position) ?? 0) + 1;
-      positionCounters.set(entry.position, posCount);
+      const posKey = isDst ? "DST" : entry.position;
+      const posCount = (positionCounters.get(posKey) ?? 0) + 1;
+      positionCounters.set(posKey, posCount);
 
       player.adp = entry.adp;
       player.adpStdDev = entry.adpStdDev;

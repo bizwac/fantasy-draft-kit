@@ -98,7 +98,7 @@ export function computeReachesAndSteals(draft: Draft, playersById: Map<string, P
       pick,
       player,
       teamName: draft.settings.teamNames[pick.teamSlot - 1] ?? `Team ${pick.teamSlot}`,
-      valueVsAdp: player.adp - pick.overall
+      valueVsAdp: pick.overall - player.adp
     };
     const list = byTeam.get(pick.teamSlot) ?? [];
     list.push(value);
@@ -127,7 +127,7 @@ export function topStealsAndReaches(draft: Draft, playersById: Map<string, Playe
       pick,
       player,
       teamName: draft.settings.teamNames[pick.teamSlot - 1] ?? `Team ${pick.teamSlot}`,
-      valueVsAdp: player.adp - pick.overall
+      valueVsAdp: pick.overall - player.adp
     });
   }
   const steals = [...all].sort((a, b) => b.valueVsAdp - a.valueVsAdp).slice(0, count);

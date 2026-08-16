@@ -32,6 +32,14 @@ export interface PlayerSeasonStats {
   lastUpdated: string;
 }
 
+// nameKey is the same normalizeName() join key used elsewhere (see
+// normalize.ts) — TheHuddle's own player IDs have no relation to Sleeper's.
+export interface HuddlePlayerIndexEntry {
+  nameKey: string;
+  huddleId: number;
+  slug: string;
+}
+
 export interface Player {
   id: string;
   name: string;

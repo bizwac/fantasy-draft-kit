@@ -49,6 +49,7 @@ export default function DraftBoard() {
   const draft = useLiveQuery(() => (id ? db.drafts.get(id) : undefined), [id]);
   const players = useLiveQuery(() => db.players.toArray(), []);
   const overrides = useLiveQuery(() => db.personalRankings.toArray(), []);
+  const seasonStats = useLiveQuery(() => db.seasonStats.toArray(), []);
 
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState<Position | "ALL">("ALL");
@@ -207,6 +208,19 @@ export default function DraftBoard() {
     return <p className="text-text-secondary">Loading…</p>;
   }
 
+  const lastSeasonPtsById = new Map<string, number | null>();
+  for (const s of seasonStats ?? []) {
+    const latest = s.seasons[0];
+    if (!latest) continue;
+    const pts =
+      draft.settings.scoring === "std"
+        ? latest.pointsStd
+        : draft.settings.scoring === "half"
+          ? latest.pointsHalfPpr
+          : latest.pointsPpr;
+    lastSeasonPtsById.set(s.playerId, pts);
+  }
+
   const totalRounds = rosterSlotCount(draft.settings.rosterSlots);
   const onClock = locationForOverallPick(draft.picks.length + 1, draft.settings.teams);
   const onClockTeamName = draft.settings.teamNames[onClock.teamSlot - 1] ?? `Team ${onClock.teamSlot}`;
@@ -350,6 +364,7 @@ export default function DraftBoard() {
           columns={columns}
           tierFor={(playerId) => metrics.tiers.get(playerId)?.tier ?? null}
           auctionValueFor={(playerId) => metrics.auctionValues.get(playerId) ?? null}
+          lastSeasonPtsFor={(playerId) => lastSeasonPtsById.get(playerId) ?? null}
           favoriteIds={favoriteIds}
           doNotDraftIds={doNotDraftIds}
           onSelect={(player) => setConfirmingPlayer(player)}

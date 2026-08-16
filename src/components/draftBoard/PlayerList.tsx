@@ -14,6 +14,7 @@ export default function PlayerList({
   columns,
   tierFor,
   auctionValueFor,
+  lastSeasonPtsFor,
   favoriteIds,
   doNotDraftIds,
   onSelect,
@@ -26,6 +27,7 @@ export default function PlayerList({
   columns: ColumnKey[];
   tierFor?: (playerId: string) => number | null;
   auctionValueFor?: (playerId: string) => number | null;
+  lastSeasonPtsFor?: (playerId: string) => number | null;
   favoriteIds?: Set<string>;
   doNotDraftIds?: Set<string>;
   onSelect: (player: Player) => void;
@@ -73,6 +75,7 @@ export default function PlayerList({
                     columns={columns}
                     tier={tierFor?.(player.id) ?? null}
                     auctionValue={auctionValueFor?.(player.id) ?? null}
+                    lastSeasonPts={lastSeasonPtsFor?.(player.id) ?? null}
                     favorite={favoriteIds?.has(player.id) ?? false}
                     doNotDraft={doNotDraftIds?.has(player.id) ?? false}
                     onSelect={() => onSelect(player)}

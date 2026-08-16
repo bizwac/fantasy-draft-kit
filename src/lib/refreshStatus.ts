@@ -14,6 +14,7 @@ export interface RefreshStatus {
   adp: SourceOutcome | null;
   lastProjectionsImportAt: string | null;
   lastSeasonStatsRefreshAt: string | null;
+  lastHuddleIndexRefreshAt: string | null;
   // Remembered so a manual refresh doesn't reset to defaults between
   // visits, and so the background auto-refresh (see dataSources/
   // autoRefresh.ts) knows what league shape to fetch ADP for without a
@@ -26,6 +27,7 @@ const EMPTY: RefreshStatus = {
   adp: null,
   lastProjectionsImportAt: null,
   lastSeasonStatsRefreshAt: null,
+  lastHuddleIndexRefreshAt: null,
   lastUsedSettings: null
 };
 

@@ -11,9 +11,10 @@ function renderCell(
     draftedByLabel: string | null;
     tier?: number | null;
     auctionValue?: number | null;
+    lastSeasonPts?: number | null;
   }
 ): ReactNode {
-  const { player, drafted, draftedByLabel, tier, auctionValue } = ctx;
+  const { player, drafted, draftedByLabel, tier, auctionValue, lastSeasonPts } = ctx;
   // The returned element is used directly as a React list item (see the
   // .map() in PlayerRow below) — it must carry `key` itself. An extra
   // wrapping <span> here would become the actual flex item instead of
@@ -79,6 +80,18 @@ function renderCell(
           {drafted && draftedByLabel ? draftedByLabel : ""}
         </span>
       );
+    case "lastSeasonPts":
+      return (
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+          {lastSeasonPts != null ? lastSeasonPts.toFixed(1) : "—"}
+        </span>
+      );
+    case "projPoints":
+      return (
+        <span key={key} className={`text-sm text-text-secondary ${wrapperClass} tabular-nums`}>
+          {player.projPoints !== null ? player.projPoints.toFixed(1) : "—"}
+        </span>
+      );
   }
 }
 
@@ -89,6 +102,7 @@ export default function PlayerRow({
   columns,
   tier,
   auctionValue,
+  lastSeasonPts,
   favorite,
   doNotDraft,
   onSelect,
@@ -101,6 +115,7 @@ export default function PlayerRow({
   columns: ColumnKey[];
   tier?: number | null;
   auctionValue?: number | null;
+  lastSeasonPts?: number | null;
   favorite?: boolean;
   doNotDraft?: boolean;
   onSelect: () => void;
@@ -134,7 +149,7 @@ export default function PlayerRow({
             <BanIcon />
           </span>
         )}
-        {columns.map((key) => renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue }))}
+        {columns.map((key) => renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue, lastSeasonPts }))}
       </button>
       <button
         type="button"

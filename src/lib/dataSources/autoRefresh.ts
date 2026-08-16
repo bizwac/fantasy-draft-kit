@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { refreshPlayerData } from "./refresh";
 import { refreshSeasonStats } from "./refreshSeasonStats";
+import { refreshHuddlePlayerIndex } from "./huddlePlayers";
 import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshSettings } from "@/lib/refreshStatus";
 
 const STALE_HOURS = 24;
@@ -53,6 +54,30 @@ async function checkAndFillSeasonStatsIfEmpty(): Promise<void> {
   }
 }
 
+let huddleIndexRunning = false;
+
+// Unlike season stats, rosters actually change (trades, cuts, signings),
+// so this re-checks on the same 24h staleness clock as player/ADP data
+// rather than only filling an empty table once.
+async function checkAndRefreshHuddleIndexIfStale(): Promise<void> {
+  if (huddleIndexRunning) return;
+  if (!navigator.onLine) return;
+  if (document.visibilityState !== "visible") return;
+
+  const status = loadRefreshStatus();
+  if (!isStale(status.lastHuddleIndexRefreshAt, STALE_HOURS)) return;
+
+  huddleIndexRunning = true;
+  try {
+    await refreshHuddlePlayerIndex();
+    saveRefreshStatus({ ...status, lastHuddleIndexRefreshAt: new Date().toISOString() });
+  } catch {
+    // Best-effort — a failed refresh just means stale/missing News links, not an error state.
+  } finally {
+    huddleIndexRunning = false;
+  }
+}
+
 let checkTimer: ReturnType<typeof setInterval> | null = null;
 let visibilityHandler: (() => void) | null = null;
 
@@ -65,13 +90,16 @@ export function startAutoRefreshWatch(): () => void {
   stopAutoRefreshWatch();
   void checkAndRefreshIfStale();
   void checkAndFillSeasonStatsIfEmpty();
+  void checkAndRefreshHuddleIndexIfStale();
   checkTimer = setInterval(() => {
     void checkAndRefreshIfStale();
     void checkAndFillSeasonStatsIfEmpty();
+    void checkAndRefreshHuddleIndexIfStale();
   }, CHECK_INTERVAL_MS);
   visibilityHandler = () => {
     void checkAndRefreshIfStale();
     void checkAndFillSeasonStatsIfEmpty();
+    void checkAndRefreshHuddleIndexIfStale();
   };
   document.addEventListener("visibilitychange", visibilityHandler);
   return stopAutoRefreshWatch;
