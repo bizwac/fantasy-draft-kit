@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import type { Player, PersonalOverride, ScoringFormat, SeasonStatLine } from "@/lib/types";
@@ -75,8 +75,28 @@ export default function PlayerDetailCard({
   // "worth showing" — no separate rank cutoff needed on top of it.
   const huddleEntry = useLiveQuery(() => db.huddlePlayers.get(normalizeName(player.name)), [player.name]);
 
+  // Without this, a wheel/trackpad gesture over the modal that isn't
+  // captured by a scrollable target inside it (most notably the news
+  // iframe — a cross-origin document has its own separate scroll
+  // context the outer page can't always claim the gesture from) chains
+  // to the page behind this fixed overlay instead, visibly scrolling
+  // the draft board underneath. Locking body scroll while any instance
+  // of this modal is mounted closes that off regardless of where the
+  // gesture actually lands.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4 overscroll-contain"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className="card w-full sm:max-w-md max-h-[85vh] overflow-y-auto p-5 flex flex-col gap-5"
         onClick={(e) => e.stopPropagation()}
@@ -224,7 +244,7 @@ export default function PlayerDetailCard({
 
       {newsOpen && huddleEntry && (
         <div
-          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-4 overscroll-contain"
           onClick={(e) => {
             e.stopPropagation();
             setNewsOpen(false);
