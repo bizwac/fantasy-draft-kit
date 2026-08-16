@@ -55,6 +55,24 @@ export default function PresentBoard() {
     }
   }
 
+  // An alternative to Full Screen for screen-sharing (e.g. Teams): true
+  // OS fullscreen takes over the whole display, which either isn't
+  // pickable as a single window in a share picker or hides the sharer's
+  // own meeting controls. A popup opened with toolbar/location/menubar
+  // disabled renders as its own chrome-free, non-fullscreen window that
+  // a "share a window" picker sees like any other app window.
+  function openPresentationWindow() {
+    const width = 1280;
+    const height = 800;
+    const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+    window.open(
+      window.location.href,
+      "fadeSignalLiveView",
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,menubar=no,status=no,resizable=yes`
+    );
+  }
+
   if (!draft || !players) {
     return <div className="min-h-dvh flex items-center justify-center text-text-secondary">Loading…</div>;
   }
@@ -102,6 +120,9 @@ export default function PresentBoard() {
           <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
             Back to Board
           </Link>
+          <button type="button" className="btn-secondary text-sm" onClick={openPresentationWindow}>
+            Open in Window
+          </button>
           <button type="button" className="btn-secondary text-sm" onClick={toggleFullscreen}>
             {isFullscreen ? "Exit Full Screen" : "Full Screen"}
           </button>

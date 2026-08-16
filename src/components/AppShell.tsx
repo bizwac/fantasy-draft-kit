@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useTheme } from "@/lib/useTheme";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 import logoLight from "@/assets/brand/lockup-light.png";
@@ -35,10 +35,12 @@ export default function AppShell() {
         >
           <MenuIcon />
         </button>
-        <picture>
-          <source srcSet={logoDark} media="(prefers-color-scheme: dark)" />
-          <img src={logoLight} alt="Fade Signal" className="h-8 w-auto" />
-        </picture>
+        <Link to="/" aria-label="Fade Signal home">
+          <picture>
+            <source srcSet={logoDark} media="(prefers-color-scheme: dark)" />
+            <img src={logoLight} alt="Fade Signal" className="h-8 w-auto" />
+          </picture>
+        </Link>
         <OnlineBadge online={online} />
       </header>
 
@@ -52,10 +54,12 @@ export default function AppShell() {
             aria-label="Navigation"
           >
             <div className="flex items-center justify-between">
-              <picture>
-                <source srcSet={logoDark} media="(prefers-color-scheme: dark)" />
-                <img src={logoLight} alt="Fade Signal" className="h-8 w-auto" />
-              </picture>
+              <Link to="/" aria-label="Fade Signal home" onClick={() => setNavOpen(false)}>
+                <picture>
+                  <source srcSet={logoDark} media="(prefers-color-scheme: dark)" />
+                  <img src={logoLight} alt="Fade Signal" className="h-8 w-auto" />
+                </picture>
+              </Link>
               <button
                 type="button"
                 className="shrink-0 min-h-touch min-w-touch flex items-center justify-center text-text-secondary"
@@ -87,9 +91,21 @@ export default function AppShell() {
         </div>
       )}
 
-      <nav className="hidden md:flex md:flex-col md:w-56 shrink-0 border-r border-border p-4 gap-6 print:hidden">
-        <img src={logoDark} alt="Fade Signal" className="h-10 w-auto self-start hidden dark:block" />
-        <img src={logoLight} alt="Fade Signal" className="h-10 w-auto self-start dark:hidden" />
+      <nav
+        className="hidden md:flex md:flex-col md:w-56 shrink-0 border-r border-border px-4 gap-6 overflow-y-auto print:hidden"
+        style={{
+          // max(), not +, as a floor: iPadOS has a known quirk where
+          // safe-area-inset-top under-reports (sometimes 0) for a
+          // standalone PWA in landscape, which previously left the logo
+          // sitting right under the status bar with no real clearance.
+          paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))"
+        }}
+      >
+        <Link to="/" aria-label="Fade Signal home" className="self-start">
+          <img src={logoDark} alt="Fade Signal" className="h-10 w-auto hidden dark:block" />
+          <img src={logoLight} alt="Fade Signal" className="h-10 w-auto dark:hidden" />
+        </Link>
         <ul className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
             <li key={item.to}>

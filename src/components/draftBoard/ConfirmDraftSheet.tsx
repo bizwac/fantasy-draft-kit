@@ -49,7 +49,6 @@ export default function ConfirmDraftSheet({
             className="select min-h-touch"
             value={teamSlot}
             onChange={(e) => setTeamSlot(Number(e.target.value))}
-            autoFocus
           >
             {teamNames.map((name, i) => (
               <option key={i} value={i + 1}>
