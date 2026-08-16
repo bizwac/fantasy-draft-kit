@@ -14,8 +14,8 @@ export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: G
               <th
                 key={i}
                 className={[
-                  "px-3 py-2 text-left text-xs font-semibold border-b border-border whitespace-nowrap",
-                  i + 1 === myTeamSlot ? "bg-accent/20 text-accent-strong" : "text-text-secondary"
+                  "px-3 py-2.5 text-left text-sm font-bold border-b border-border whitespace-nowrap",
+                  i + 1 === myTeamSlot ? "bg-accent/20 text-accent-strong" : "text-text-primary"
                 ].join(" ")}
               >
                 {name}
