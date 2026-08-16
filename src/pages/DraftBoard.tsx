@@ -240,6 +240,9 @@ export default function DraftBoard() {
           <Link to={`/draft/${id}/results`} className="btn-secondary text-sm">
             Results
           </Link>
+          <Link to={`/draft/${id}/present`} target="_blank" rel="noopener" className="btn-secondary text-sm">
+            Live View ↗
+          </Link>
         </div>
       </div>
 

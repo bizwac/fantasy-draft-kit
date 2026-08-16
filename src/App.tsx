@@ -7,6 +7,7 @@ import MyBoard from "@/pages/MyBoard";
 import DraftBoard from "@/pages/DraftBoard";
 import PostDraft from "@/pages/PostDraft";
 import Settings from "@/pages/Settings";
+import PresentBoard from "@/pages/PresentBoard";
 
 export default function App() {
   return (
@@ -20,6 +21,9 @@ export default function App() {
         <Route path="/my-board" element={<MyBoard />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
+      {/* Outside AppShell deliberately — no sidebar/nav chrome, meant to
+          fill a screen-shared window or full-screen presentation. */}
+      <Route path="/draft/:id/present" element={<PresentBoard />} />
     </Routes>
   );
 }

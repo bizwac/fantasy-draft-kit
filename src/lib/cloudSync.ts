@@ -62,6 +62,12 @@ export async function pushBackupToCloud(): Promise<{ ok: boolean; error?: string
   }
 }
 
+// Set for the duration of a pull's local write so installCloudSyncHooks'
+// write-triggered push doesn't immediately re-push the data this pull
+// just wrote — relevant now that pulls can run on an interval (see
+// startAutoPull) instead of only from an explicit user action.
+let isApplyingRemoteData = false;
+
 export async function pullBackupFromCloud(): Promise<{ ok: boolean; summary?: ImportSummary; error?: string }> {
   try {
     const res = await fetch("/api/sync", { method: "GET" });
@@ -73,7 +79,13 @@ export async function pullBackupFromCloud(): Promise<{ ok: boolean; summary?: Im
       return { ok: false, error: body.error ?? `HTTP ${res.status}` };
     }
     const json = await res.json();
-    const summary = await importPersonalData(json);
+    isApplyingRemoteData = true;
+    let summary: ImportSummary;
+    try {
+      summary = await importPersonalData(json);
+    } finally {
+      isApplyingRemoteData = false;
+    }
     if (summary.errors.length > 0) {
       return { ok: false, error: summary.errors.join(" ") };
     }
@@ -120,10 +132,35 @@ export function installCloudSyncHooks(): void {
   hooksInstalled = true;
 
   for (const table of [db.drafts, db.personalRankings]) {
-    table.hook("creating", () => scheduleCloudPush());
-    table.hook("updating", () => scheduleCloudPush());
-    table.hook("deleting", () => scheduleCloudPush());
+    table.hook("creating", () => { if (!isApplyingRemoteData) scheduleCloudPush(); });
+    table.hook("updating", () => { if (!isApplyingRemoteData) scheduleCloudPush(); });
+    table.hook("deleting", () => { if (!isApplyingRemoteData) scheduleCloudPush(); });
   }
 
   window.addEventListener("online", () => void pushBackupToCloud());
+}
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+// Used by the presentation view (a separate tab/window/device meant for
+// screen-share) to stay current without the viewer touching anything.
+// Skips ticks while the tab is hidden or offline — no point pulling into
+// a screen no one's looking at, and a fetch would just fail offline
+// anyway. Returns a cleanup function so callers can use it directly as a
+// useEffect return value.
+export function startAutoPull(intervalMs: number): () => void {
+  stopAutoPull();
+  pollTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    if (!navigator.onLine) return;
+    void pullBackupFromCloud();
+  }, intervalMs);
+  return stopAutoPull;
+}
+
+export function stopAutoPull(): void {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
 }
