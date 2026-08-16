@@ -2,21 +2,28 @@ import { useState } from "react";
 import { loadTimerSettings, saveTimerSettings } from "@/lib/timerSettings";
 import { loadColumnSettings, saveColumnSettings, type ColumnSettings } from "@/lib/columnSettings";
 import { COLUMN_DEFS, type ColumnKey } from "@/components/draftBoard/playerListColumns";
+import { scheduleCloudPush } from "@/lib/cloudSync";
 import RankedList from "@/components/shared/RankedList";
 
 export default function Settings() {
   const [timerSettings, setTimerSettings] = useState(() => loadTimerSettings());
   const [columnSettings, setColumnSettings] = useState(() => loadColumnSettings());
 
+  // These live in localStorage, not Dexie, so they don't pass through
+  // the write hooks that normally schedule a cloud push (see
+  // cloudSync.ts) — trigger one explicitly so a preference set here
+  // actually reaches a Live View open on another device.
   function update(next: Partial<typeof timerSettings>) {
     const merged = { ...timerSettings, ...next };
     setTimerSettings(merged);
     saveTimerSettings(merged);
+    scheduleCloudPush();
   }
 
   function updateColumns(next: ColumnSettings) {
     setColumnSettings(next);
     saveColumnSettings(next);
+    scheduleCloudPush();
   }
 
   function toggleColumnVisible(key: ColumnKey, visible: boolean) {

@@ -149,13 +149,19 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 // Skips ticks while the tab is hidden or offline — no point pulling into
 // a screen no one's looking at, and a fetch would just fail offline
 // anyway. Returns a cleanup function so callers can use it directly as a
-// useEffect return value.
-export function startAutoPull(intervalMs: number): () => void {
+// useEffect return value. `onPulled` fires after each successful pull —
+// useState(() => loadX()) initializers only run once on mount, so a
+// caller reading localStorage-backed preferences (timer/column
+// settings) needs this to notice a value that just arrived from another
+// device.
+export function startAutoPull(intervalMs: number, onPulled?: () => void): () => void {
   stopAutoPull();
   pollTimer = setInterval(() => {
     if (document.visibilityState !== "visible") return;
     if (!navigator.onLine) return;
-    void pullBackupFromCloud({ protectNewerDrafts: true });
+    void pullBackupFromCloud({ protectNewerDrafts: true }).then((result) => {
+      if (result.ok) onPulled?.();
+    });
   }, intervalMs);
   return stopAutoPull;
 }

@@ -228,9 +228,9 @@ export default function DraftBoard() {
 
   return (
     <div className="flex flex-col gap-4 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-4rem)]">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-display font-semibold truncate">{draft.name}</h1>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 flex-wrap">
           <button type="button" className="btn-secondary text-sm" onClick={() => setRosterOpen(true)}>
             My Roster
           </button>

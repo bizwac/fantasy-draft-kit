@@ -6,9 +6,11 @@ import { locationForOverallPick, rosterSlotCount } from "@/lib/draftMath";
 import { buildPostDraftGrid } from "@/lib/postDraft";
 import { startAutoPull } from "@/lib/cloudSync";
 import { loadTimerSettings } from "@/lib/timerSettings";
+import { useTheme } from "@/lib/useTheme";
 import type { Player } from "@/lib/types";
 import PostDraftGrid from "@/components/postDraft/PostDraftGrid";
 import OnClockTimer from "@/components/draftBoard/OnClockTimer";
+import ThemeToggle from "@/components/shared/ThemeToggle";
 
 const PULL_INTERVAL_MS = 5000;
 
@@ -21,11 +23,16 @@ export default function PresentBoard() {
   const { id } = useParams<{ id: string }>();
   const draft = useLiveQuery(() => (id ? db.drafts.get(id) : undefined), [id]);
   const players = useLiveQuery(() => db.players.toArray(), []);
-  const [timerSettings] = useState(() => loadTimerSettings());
+  const [timerSettings, setTimerSettings] = useState(() => loadTimerSettings());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  // AppShell normally applies the stored theme via this hook — this
+  // page renders outside AppShell (deliberately chrome-free), so
+  // without calling it here a fresh tab/window never gets the .dark
+  // class applied at all and has no way to change it either.
+  const { preference, setPreference } = useTheme();
 
-  useEffect(() => startAutoPull(PULL_INTERVAL_MS), []);
+  useEffect(() => startAutoPull(PULL_INTERVAL_MS, () => setTimerSettings(loadTimerSettings())), []);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -81,7 +88,8 @@ export default function PresentBoard() {
             )
           )}
         </div>
-        <div className="flex gap-2 print:hidden">
+        <div className="flex items-center gap-2 print:hidden">
+          <ThemeToggle preference={preference} onChange={setPreference} />
           <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
             Back to Board
           </Link>

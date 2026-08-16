@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { db } from "./db";
 import type { Draft, PersonalOverride } from "./types";
+import { loadTimerSettings, saveTimerSettings, type TimerSettings } from "./timerSettings";
+import { loadColumnSettings, saveColumnSettings, type ColumnSettings } from "./columnSettings";
 
 // Personal rankings/notes/favorites/DND are keyed by playerId and shared
 // across every draft (spec §3.2) — this is the one dataset that isn't
@@ -136,11 +138,36 @@ const DraftSchema = z.object({
   status: z.enum(["setup", "live", "complete"])
 });
 
+// Timer/column preferences live in localStorage, not Dexie (see
+// timerSettings.ts, columnSettings.ts) — plain per-device state until
+// now. Folding them into the same backup that already syncs drafts
+// means turning the pick timer on for a live draft actually reaches a
+// Live View opened on a different device/browser, instead of needing
+// to be set separately on every screen. Keys mirror the ColumnKey union
+// in playerListColumns.ts.
+const ColumnKeySchema = z.enum(["injury", "adp", "rank", "bye", "rookie", "team", "tier", "value", "draftedBy"]);
+const TimerSettingsSchema = z.object({
+  enabled: z.boolean(),
+  durationSeconds: z.number(),
+  soundEnabled: z.boolean()
+});
+const ColumnSettingsSchema = z.object({
+  order: z.array(ColumnKeySchema),
+  hidden: z.array(ColumnKeySchema)
+});
+const PreferencesSchema = z
+  .object({
+    timerSettings: TimerSettingsSchema.optional(),
+    columnSettings: ColumnSettingsSchema.optional()
+  })
+  .optional();
+
 const PersonalDataExportSchema = z.object({
   version: z.union([z.literal(1), z.literal(2)]),
   exportedAt: z.string(),
   overrides: z.array(PersonalOverrideSchema),
-  drafts: z.array(DraftSchema).optional()
+  drafts: z.array(DraftSchema).optional(),
+  preferences: PreferencesSchema
 });
 
 export interface PersonalDataExport {
@@ -148,11 +175,18 @@ export interface PersonalDataExport {
   exportedAt: string;
   overrides: PersonalOverride[];
   drafts: Draft[];
+  preferences: { timerSettings: TimerSettings; columnSettings: ColumnSettings };
 }
 
 export async function exportPersonalData(): Promise<PersonalDataExport> {
   const [overrides, drafts] = await Promise.all([db.personalRankings.toArray(), db.drafts.toArray()]);
-  return { version: 2, exportedAt: new Date().toISOString(), overrides, drafts };
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    overrides,
+    drafts,
+    preferences: { timerSettings: loadTimerSettings(), columnSettings: loadColumnSettings() }
+  };
 }
 
 export interface ImportSummary {
@@ -209,6 +243,9 @@ export async function importPersonalData(
   if (drafts.length > 0) {
     await db.drafts.bulkPut(drafts);
   }
+
+  if (parsed.data.preferences?.timerSettings) saveTimerSettings(parsed.data.preferences.timerSettings);
+  if (parsed.data.preferences?.columnSettings) saveColumnSettings(parsed.data.preferences.columnSettings);
 
   return { merged: parsed.data.overrides.length, draftsRestored: drafts.length, errors: [] };
 }
