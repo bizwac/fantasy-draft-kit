@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { locationForOverallPick, nextPickForSlot, rosterSlotCount } from "@/lib/draftMath";
 import { addPick, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
+import { setTimerRunning } from "@/lib/draftRepo";
 import { assignTiers, computeAuctionValues, computeVorp, replacementLevels, replacementRanks } from "@/lib/valueMetrics";
 import { buildRosterState } from "@/lib/rosterTracker";
 import { computeHandcuffs } from "@/lib/handcuff";
@@ -262,6 +263,8 @@ export default function DraftBoard() {
             myNextPick={myNextPick}
             picksUntilMine={picksUntilMine}
             timerSettings={timerSettings}
+            timerRunning={!!draft.timerRunning}
+            onToggleTimerRunning={() => id && setTimerRunning(id, !draft.timerRunning)}
           />
           <TierAlertBanner alerts={tierAlerts} />
         </>

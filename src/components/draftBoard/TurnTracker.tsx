@@ -8,7 +8,9 @@ export default function TurnTracker({
   isMyTurn,
   myNextPick,
   picksUntilMine,
-  timerSettings
+  timerSettings,
+  timerRunning,
+  onToggleTimerRunning
 }: {
   onClock: PickLocation;
   onClockTeamName: string;
@@ -16,6 +18,8 @@ export default function TurnTracker({
   myNextPick: PickLocation | null;
   picksUntilMine: number | null;
   timerSettings: TimerSettings;
+  timerRunning: boolean;
+  onToggleTimerRunning: () => void;
 }) {
   return (
     <div
@@ -32,11 +36,17 @@ export default function TurnTracker({
           Round {onClock.round}, Slot {onClock.slotInRound}
         </span>
         {timerSettings.enabled && (
-          <OnClockTimer
-            durationSeconds={timerSettings.durationSeconds}
-            resetSignal={onClock.overall}
-            soundEnabled={timerSettings.soundEnabled}
-          />
+          <>
+            <OnClockTimer
+              durationSeconds={timerSettings.durationSeconds}
+              resetSignal={onClock.overall}
+              running={timerRunning}
+              soundEnabled={timerSettings.soundEnabled}
+            />
+            <button type="button" className="btn-secondary text-xs" onClick={onToggleTimerRunning}>
+              {timerRunning ? "Pause Timer" : "Start Timer"}
+            </button>
+          </>
         )}
       </div>
 

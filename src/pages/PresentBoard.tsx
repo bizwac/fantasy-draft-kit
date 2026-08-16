@@ -82,7 +82,12 @@ export default function PresentBoard() {
                   // Sound stays off on this view regardless of the setting — it's
                   // meant to be heard on the drafter's own tab, not blasted over
                   // a screen-share to everyone watching.
-                  <OnClockTimer durationSeconds={timerSettings.durationSeconds} resetSignal={onClock.overall} soundEnabled={false} />
+                  <OnClockTimer
+                    durationSeconds={timerSettings.durationSeconds}
+                    resetSignal={onClock.overall}
+                    running={!!draft.timerRunning}
+                    soundEnabled={false}
+                  />
                 )}
               </p>
             )

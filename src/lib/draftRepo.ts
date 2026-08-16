@@ -27,7 +27,8 @@ export async function duplicateDraft(id: string): Promise<Draft | null> {
     name: `${source.name} (copy)`,
     createdAt: new Date().toISOString(),
     picks: [],
-    status: "setup"
+    status: "setup",
+    timerRunning: false
   };
   await db.drafts.add(copy);
   return copy;
@@ -45,4 +46,8 @@ export async function deleteDraft(id: string): Promise<void> {
 
 export async function updateDraftSettings(id: string, settings: DraftSettings): Promise<void> {
   await db.drafts.update(id, { settings });
+}
+
+export async function setTimerRunning(id: string, running: boolean): Promise<void> {
+  await db.drafts.update(id, { timerRunning: running });
 }

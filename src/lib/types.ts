@@ -89,6 +89,14 @@ export interface Draft {
   settings: DraftSettings;
   picks: Pick[];
   status: DraftStatus;
+  // Controls only whether the on-the-clock countdown (see timerSettings)
+  // is actively ticking — separate from `status`, which tracks the draft
+  // itself. Lives on the draft record (not localStorage) specifically so
+  // Start/Pause reaches every view showing this draft, including a Live
+  // View on another device, through the same sync path as picks.
+  // Undefined (a draft created before this field existed, or a fresh one
+  // not yet started) behaves as not-running.
+  timerRunning?: boolean;
 }
 
 export const DEFAULT_ROSTER_SLOTS: RosterSlots = {
