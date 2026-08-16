@@ -1,10 +1,11 @@
 import Dexie, { type Table } from "dexie";
-import type { Draft, PersonalOverride, Player } from "./types";
+import type { Draft, PersonalOverride, Player, PlayerSeasonStats } from "./types";
 
 class FadeSignalDB extends Dexie {
   players!: Table<Player, string>;
   personalRankings!: Table<PersonalOverride, string>;
   drafts!: Table<Draft, string>;
+  seasonStats!: Table<PlayerSeasonStats, string>;
 
   constructor() {
     super("fade-signal");
@@ -15,6 +16,12 @@ class FadeSignalDB extends Dexie {
       players: "id, position, team, adp, tier",
       personalRankings: "playerId, favorite, doNotDraft",
       drafts: "id, status, createdAt"
+    });
+    // seasonStats is its own store, not a field on Player, specifically
+    // so refreshPlayerData's clear-and-rebuild of `players` (run
+    // automatically every 24h) can never wipe it out from under a user.
+    this.version(2).stores({
+      seasonStats: "playerId"
     });
   }
 }

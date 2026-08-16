@@ -1,11 +1,43 @@
 import { useState } from "react";
-import type { Player, PersonalOverride } from "@/lib/types";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import type { Player, PersonalOverride, ScoringFormat, SeasonStatLine } from "@/lib/types";
 import { depthChartLabel } from "@/lib/handcuff";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 import Badge from "./Badge";
 
+function pointsForFormat(line: SeasonStatLine, scoring: ScoringFormat): number | null {
+  switch (scoring) {
+    case "std":
+      return line.pointsStd;
+    case "half":
+      return line.pointsHalfPpr;
+    case "ppr":
+    case "superflex-ppr":
+      return line.pointsPpr;
+  }
+}
+
+// A short "what actually happened" line per position — the raw counting
+// stats fantasy managers care about, not the full box score.
+function keyStatLine(line: SeasonStatLine, position: Player["position"]): string | null {
+  if (position === "QB" && (line.passYd !== null || line.passTd !== null)) {
+    return `${line.passYd ?? 0} pass yd, ${line.passTd ?? 0} TD`;
+  }
+  if ((position === "RB" || position === "WR" || position === "TE") && (line.rushYd || line.recYd || line.rec)) {
+    const parts: string[] = [];
+    if (line.rushYd) parts.push(`${line.rushYd} rush yd`);
+    if (line.rec) parts.push(`${line.rec} rec, ${line.recYd ?? 0} yd`);
+    const tds = (line.rushTd ?? 0) + (line.recTd ?? 0);
+    if (tds) parts.push(`${tds} TD`);
+    return parts.join(", ") || null;
+  }
+  return null;
+}
+
 export default function PlayerDetailCard({
   player,
+  scoring,
   tier,
   tierBasis,
   vorp,
@@ -19,6 +51,7 @@ export default function PlayerDetailCard({
   onClose
 }: {
   player: Player;
+  scoring: ScoringFormat;
   tier: number | null;
   tierBasis: "projection" | "adp" | null;
   vorp: number | null;
@@ -33,6 +66,7 @@ export default function PlayerDetailCard({
 }) {
   const depthLabel = depthChartLabel(player);
   const [note, setNote] = useState(override?.note ?? "");
+  const seasonStats = useLiveQuery(() => db.seasonStats.get(player.id), [player.id]);
 
   return (
     <div className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose} role="presentation">
@@ -110,6 +144,33 @@ export default function PlayerDetailCard({
                 : "Not imported"
             }
           />
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-text-secondary mb-1.5">Season Stats</h3>
+          {player.isRookie && !seasonStats?.seasons.length ? (
+            <p className="text-sm text-text-secondary italic">Rookie — no NFL history.</p>
+          ) : seasonStats && seasonStats.seasons.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {seasonStats.seasons.map((line) => {
+                const pts = pointsForFormat(line, scoring);
+                const stat = keyStatLine(line, player.position);
+                return (
+                  <div key={line.season} className="flex items-center justify-between gap-3 text-sm rounded-md bg-surface-sunken px-2 py-1.5">
+                    <span className="font-medium w-12 shrink-0">{line.season}</span>
+                    <span className="text-text-secondary flex-1 min-w-0 truncate">
+                      {stat ?? (line.gamesPlayed !== null ? `${line.gamesPlayed} games` : "—")}
+                    </span>
+                    <span className="tabular-nums font-medium shrink-0">
+                      {pts !== null ? `${pts.toFixed(1)} pts` : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-text-secondary italic">Not refreshed yet — see Settings → Season Stats.</p>
+          )}
         </div>
 
         <div>

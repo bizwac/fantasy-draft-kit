@@ -385,6 +385,7 @@ export default function DraftBoard() {
       {detailPlayer && (
         <PlayerDetailCard
           player={detailPlayer}
+          scoring={draft.settings.scoring}
           tier={metrics.tiers.get(detailPlayer.id)?.tier ?? null}
           tierBasis={metrics.tiers.get(detailPlayer.id)?.basis ?? null}
           vorp={metrics.vorp.get(detailPlayer.id) ?? null}

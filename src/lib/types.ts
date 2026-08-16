@@ -7,6 +7,31 @@ export interface PlayerUsage {
   season: number | null;
 }
 
+// Historical season stats live in their own table (see db.ts), not on
+// Player itself — the main players table is fully cleared and rebuilt on
+// every Sleeper/ADP refresh (refresh.ts), which would silently wipe this
+// on the next background auto-refresh if it lived there instead.
+export interface SeasonStatLine {
+  season: number;
+  gamesPlayed: number | null;
+  pointsStd: number | null;
+  pointsHalfPpr: number | null;
+  pointsPpr: number | null;
+  passYd: number | null;
+  passTd: number | null;
+  rushYd: number | null;
+  rushTd: number | null;
+  rec: number | null;
+  recYd: number | null;
+  recTd: number | null;
+}
+
+export interface PlayerSeasonStats {
+  playerId: string;
+  seasons: SeasonStatLine[]; // sorted most recent first
+  lastUpdated: string;
+}
+
 export interface Player {
   id: string;
   name: string;

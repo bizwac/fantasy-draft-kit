@@ -13,6 +13,7 @@ export interface RefreshStatus {
   sleeper: SourceOutcome | null;
   adp: SourceOutcome | null;
   lastProjectionsImportAt: string | null;
+  lastSeasonStatsRefreshAt: string | null;
   // Remembered so a manual refresh doesn't reset to defaults between
   // visits, and so the background auto-refresh (see dataSources/
   // autoRefresh.ts) knows what league shape to fetch ADP for without a
@@ -20,7 +21,13 @@ export interface RefreshStatus {
   lastUsedSettings: RefreshSettings | null;
 }
 
-const EMPTY: RefreshStatus = { sleeper: null, adp: null, lastProjectionsImportAt: null, lastUsedSettings: null };
+const EMPTY: RefreshStatus = {
+  sleeper: null,
+  adp: null,
+  lastProjectionsImportAt: null,
+  lastSeasonStatsRefreshAt: null,
+  lastUsedSettings: null
+};
 
 export function loadRefreshStatus(): RefreshStatus {
   try {

@@ -5,6 +5,7 @@ import { COLUMN_DEFS, type ColumnKey } from "@/components/draftBoard/playerListC
 import { scheduleCloudPush } from "@/lib/cloudSync";
 import { getStorageEstimate } from "@/lib/persistence";
 import { refreshPlayerData, type RefreshResult } from "@/lib/dataSources/refresh";
+import { refreshSeasonStats, type SeasonStatsRefreshResult } from "@/lib/dataSources/refreshSeasonStats";
 import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshStatus } from "@/lib/refreshStatus";
 import type { ScoringFormat } from "@/lib/types";
 import { db } from "@/lib/db";
@@ -33,10 +34,29 @@ export default function Settings() {
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [storage, setStorage] = useState<Awaited<ReturnType<typeof getStorageEstimate>> | null>(null);
 
+  const [statsRefreshing, setStatsRefreshing] = useState(false);
+  const [statsResult, setStatsResult] = useState<SeasonStatsRefreshResult | null>(null);
+  const [seasonStatsCount, setSeasonStatsCount] = useState<number | null>(null);
+  const seasons = [year - 1, year - 2, year - 3];
+
   useEffect(() => {
     getStorageEstimate().then(setStorage);
     db.players.count().then(setPlayerCount);
-  }, [lastResult]);
+    db.seasonStats.count().then(setSeasonStatsCount);
+  }, [lastResult, statsResult]);
+
+  async function handleSeasonStatsRefresh() {
+    setStatsRefreshing(true);
+    try {
+      const result = await refreshSeasonStats(seasons);
+      setStatsResult(result);
+      const next = { ...refreshStatus, lastSeasonStatsRefreshAt: new Date().toISOString() };
+      setRefreshStatus(next);
+      saveRefreshStatus(next);
+    } finally {
+      setStatsRefreshing(false);
+    }
+  }
 
   // These live in localStorage, not Dexie, so they don't pass through
   // the write hooks that normally schedule a cloud push (see
@@ -151,6 +171,36 @@ export default function Settings() {
             {storage.quotaMB ? ` of ${storage.quotaMB.toFixed(0)} MB` : ""} ·{" "}
             {storage.persisted ? "persisted (protected from eviction)" : "not yet persisted"}
           </p>
+        )}
+      </section>
+
+      <section className="card p-5 flex flex-col gap-4">
+        <div>
+          <h2 className="font-display font-semibold">Season Stats</h2>
+          <p className="text-sm text-text-secondary">
+            Pulls actual games-played and fantasy points for the last 3 completed seasons ({seasons[2]}–{seasons[0]})
+            from Sleeper, shown on each player's card. Doesn't change automatically — historical seasons don't, so
+            there's no need to re-pull unless you're missing a season.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn-primary" onClick={handleSeasonStatsRefresh} disabled={statsRefreshing}>
+            {statsRefreshing ? "Refreshing…" : "Refresh Season Stats"}
+          </button>
+          {refreshStatus.lastSeasonStatsRefreshAt && (
+            <span className="text-sm text-text-secondary">
+              Last refreshed {new Date(refreshStatus.lastSeasonStatsRefreshAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {statsResult && statsResult.errors.length > 0 && (
+          <p className="text-sm text-danger">{statsResult.errors.join("; ")}</p>
+        )}
+
+        {seasonStatsCount !== null && (
+          <p className="text-sm text-text-secondary">{seasonStatsCount} players with historical stats stored.</p>
         )}
       </section>
 
