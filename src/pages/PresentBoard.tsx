@@ -11,6 +11,7 @@ import type { Player } from "@/lib/types";
 import PostDraftGrid from "@/components/postDraft/PostDraftGrid";
 import OnClockTimer from "@/components/draftBoard/OnClockTimer";
 import ThemeToggle from "@/components/shared/ThemeToggle";
+import Badge from "@/components/player/Badge";
 
 const PULL_INTERVAL_MS = 5000;
 
@@ -68,7 +69,10 @@ export default function PresentBoard() {
     <div ref={containerRef} className="min-h-dvh bg-surface text-text-primary p-6 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="font-display text-2xl font-semibold">{draft.name}</h1>
+          <h1 className="font-display text-2xl font-semibold flex items-center gap-2">
+            {draft.name}
+            {draft.isMock && <Badge tone="info">Mock</Badge>}
+          </h1>
           {isDraftOver ? (
             <p className="text-lg text-success mt-1">Draft complete</p>
           ) : (

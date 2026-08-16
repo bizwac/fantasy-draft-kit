@@ -136,7 +136,8 @@ const DraftSchema = z.object({
   settings: DraftSettingsSchema,
   picks: z.array(PickSchema),
   status: z.enum(["setup", "live", "complete"]),
-  timerRunning: z.boolean().optional()
+  timerRunning: z.boolean().optional(),
+  isMock: z.boolean().optional()
 });
 
 // Timer/column preferences live in localStorage, not Dexie (see

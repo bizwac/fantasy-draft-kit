@@ -6,6 +6,7 @@ import { buildPostDraftGrid, computeReachesAndSteals, computeTeamProjections, to
 import type { Player } from "@/lib/types";
 import PostDraftGrid from "@/components/postDraft/PostDraftGrid";
 import { ProjectionStandings, ValueStandings } from "@/components/postDraft/TeamStandings";
+import Badge from "@/components/player/Badge";
 
 export default function PostDraft() {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +47,10 @@ export default function PostDraft() {
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-24 print:max-w-none">
       <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
-        <h1 className="text-2xl font-display">{draft.name} — Results</h1>
+        <h1 className="text-2xl font-display flex items-center gap-2">
+          {draft.name} — Results
+          {draft.isMock && <Badge tone="info">Mock</Badge>}
+        </h1>
         <div className="flex gap-2">
           <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
             Back to Draft

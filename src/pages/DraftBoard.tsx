@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -21,6 +21,7 @@ import ScarcityMeter from "@/components/draftBoard/ScarcityMeter";
 import TierAlertBanner from "@/components/draftBoard/TierAlertBanner";
 import RosterPanel from "@/components/draftBoard/RosterPanel";
 import PlayerDetailCard from "@/components/player/PlayerDetailCard";
+import Badge from "@/components/player/Badge";
 
 const OUT_STATUSES = new Set(["Out", "IR", "PUP", "Suspended"]);
 
@@ -181,6 +182,34 @@ export default function DraftBoard() {
     }
   }, [draft, isDraftOver]);
 
+  // Mock drafts auto-pick for every team but mine: best ADP-available,
+  // instantly, the moment it's their turn. Re-fires after each pick
+  // (draft.picks.length changing produces a new `draft` via the live
+  // query), chaining through consecutive CPU turns until it lands back
+  // on my slot or the draft ends. autoPickingRef guards against firing
+  // twice for the same turn (e.g. React 18 Strict Mode's double-invoke
+  // in dev) — addPick itself is a no-op for an already-drafted player,
+  // but the guard also avoids two different CPU players being picked
+  // for the same team slot in a race.
+  const autoPickingRef = useRef(false);
+  useEffect(() => {
+    if (!draft || !players || !draft.isMock || isDraftOver) return;
+    const onClockNow = locationForOverallPick(draft.picks.length + 1, draft.settings.teams);
+    if (onClockNow.teamSlot === draft.settings.myDraftSlot) return;
+    if (autoPickingRef.current) return;
+    const draftedNow = new Set(draft.picks.map((p) => p.playerId));
+    let best: Player | null = null;
+    for (const p of players) {
+      if (p.adp === null || draftedNow.has(p.id)) continue;
+      if (!best || p.adp < (best.adp as number)) best = p;
+    }
+    if (!best) return;
+    autoPickingRef.current = true;
+    addPick(draft.id, best.id, onClockNow.teamSlot).finally(() => {
+      autoPickingRef.current = false;
+    });
+  }, [draft, players, isDraftOver]);
+
   if (!draft || !players || !metrics) {
     return <p className="text-text-secondary">Loading…</p>;
   }
@@ -230,7 +259,10 @@ export default function DraftBoard() {
   return (
     <div className="flex flex-col gap-4 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-4rem)]">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-display font-semibold truncate">{draft.name}</h1>
+        <h1 className="text-xl font-display font-semibold truncate flex items-center gap-2">
+          {draft.name}
+          {draft.isMock && <Badge tone="info">Mock</Badge>}
+        </h1>
         <div className="flex gap-2 flex-wrap">
           <button type="button" className="btn-secondary text-sm" onClick={() => setRosterOpen(true)}>
             My Roster

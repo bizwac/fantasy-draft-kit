@@ -97,6 +97,11 @@ export interface Draft {
   // Undefined (a draft created before this field existed, or a fresh one
   // not yet started) behaves as not-running.
   timerRunning?: boolean;
+  // Set at creation via "New Mock Draft" and never changed after — every
+  // other team auto-picks best-ADP-available the instant it's their
+  // turn (see DraftBoard's auto-pick effect), so a full mock runs in
+  // minutes with only your own picks needing input.
+  isMock?: boolean;
 }
 
 export const DEFAULT_ROSTER_SLOTS: RosterSlots = {

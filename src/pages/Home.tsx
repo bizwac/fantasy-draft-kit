@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
 import { rosterSlotCount } from "@/lib/draftMath";
 import type { Draft } from "@/lib/types";
+import Badge from "@/components/player/Badge";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -15,13 +16,23 @@ export default function Home() {
     navigate(`/draft/${draft.id}/setup`);
   }
 
+  async function handleCreateMock() {
+    const draft = await createDraft("Mock Draft", undefined, true);
+    navigate(`/draft/${draft.id}/setup`);
+  }
+
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-display">Drafts</h1>
-        <button type="button" className="btn-primary" onClick={handleCreate}>
-          New Draft
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className="btn-secondary" onClick={handleCreateMock}>
+            New Mock Draft
+          </button>
+          <button type="button" className="btn-primary" onClick={handleCreate}>
+            New Draft
+          </button>
+        </div>
       </div>
 
       {drafts === undefined && <p className="text-text-secondary">Loading…</p>}
@@ -68,7 +79,10 @@ function DraftCard({ draft }: { draft: Draft }) {
     <li>
       <Link to={to} className="card flex items-center justify-between p-4 hover:border-accent transition-colors">
         <div className="flex flex-col gap-1">
-          <span className="font-display font-semibold">{draft.name}</span>
+          <span className="font-display font-semibold flex items-center gap-2">
+            {draft.name}
+            {draft.isMock && <Badge tone="info">Mock</Badge>}
+          </span>
           <span className="text-sm text-text-secondary">
             {draft.settings.teams} teams · {draft.settings.scoring.toUpperCase()} ·{" "}
             {statusLabel(draft.status)}

@@ -5,14 +5,15 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-export async function createDraft(name: string, settings?: Partial<DraftSettings>): Promise<Draft> {
+export async function createDraft(name: string, settings?: Partial<DraftSettings>, isMock = false): Promise<Draft> {
   const draft: Draft = {
     id: newId(),
     name: name.trim() || "Untitled Draft",
     createdAt: new Date().toISOString(),
     settings: { ...createDefaultDraftSettings(), ...settings },
     picks: [],
-    status: "setup"
+    status: "setup",
+    isMock
   };
   await db.drafts.add(draft);
   return draft;
