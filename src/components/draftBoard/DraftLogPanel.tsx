@@ -64,7 +64,7 @@ export default function DraftLogPanel({
               )}
               <span className="flex-1 min-w-0 truncate text-sm font-medium">{player?.name ?? "Unknown player"}</span>
               <select
-                className="rounded bg-surface-raised text-xs px-1.5 py-1 min-h-touch max-w-[9rem]"
+                className="rounded bg-surface-raised text-xs pl-1.5 pr-6 py-1 min-h-touch max-w-[9rem]"
                 value={pick.teamSlot}
                 onChange={(e) => onReassignTeam(pick.overall, Number(e.target.value))}
               >

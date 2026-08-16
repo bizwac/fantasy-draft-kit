@@ -97,7 +97,7 @@ export default function Settings() {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-secondary">Teams</span>
             <select
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch"
+              className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch"
               value={teams}
               onChange={(e) => setTeams(Number(e.target.value))}
             >
@@ -111,7 +111,7 @@ export default function Settings() {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-secondary">Scoring</span>
             <select
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch"
+              className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch"
               value={scoring}
               onChange={(e) => setScoring(e.target.value as ScoringFormat)}
             >

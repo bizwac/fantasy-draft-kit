@@ -321,7 +321,7 @@ export default function DraftBoard() {
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="rounded-md bg-surface-sunken px-2 py-2 min-h-touch text-sm"
+          className="rounded-md bg-surface-sunken pl-2 pr-7 py-2 min-h-touch text-sm"
           aria-label="Sort by"
         >
           {SORT_OPTIONS.map((opt) => (
