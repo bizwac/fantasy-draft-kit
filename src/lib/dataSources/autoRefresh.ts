@@ -1,4 +1,6 @@
+import { db } from "@/lib/db";
 import { refreshPlayerData } from "./refresh";
+import { refreshSeasonStats } from "./refreshSeasonStats";
 import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshSettings } from "@/lib/refreshStatus";
 
 const STALE_HOURS = 24;
@@ -29,6 +31,28 @@ async function checkAndRefreshIfStale(): Promise<void> {
   }
 }
 
+let seasonStatsRunning = false;
+
+// Unlike player/ADP data, historical seasons never change once final, so
+// this only needs to fill in an empty local table (a fresh device, e.g.
+// switching from desktop to mobile) — never a recurring re-fetch on a
+// staleness clock like checkAndRefreshIfStale above.
+async function checkAndFillSeasonStatsIfEmpty(): Promise<void> {
+  if (seasonStatsRunning) return;
+  if (!navigator.onLine) return;
+  if (document.visibilityState !== "visible") return;
+
+  seasonStatsRunning = true;
+  try {
+    const count = await db.seasonStats.count();
+    if (count > 0) return;
+    const year = loadRefreshStatus().lastUsedSettings?.year ?? new Date().getFullYear();
+    await refreshSeasonStats([year - 1, year - 2, year - 3]);
+  } finally {
+    seasonStatsRunning = false;
+  }
+}
+
 let checkTimer: ReturnType<typeof setInterval> | null = null;
 let visibilityHandler: (() => void) | null = null;
 
@@ -40,8 +64,15 @@ let visibilityHandler: (() => void) | null = null;
 export function startAutoRefreshWatch(): () => void {
   stopAutoRefreshWatch();
   void checkAndRefreshIfStale();
-  checkTimer = setInterval(() => void checkAndRefreshIfStale(), CHECK_INTERVAL_MS);
-  visibilityHandler = () => void checkAndRefreshIfStale();
+  void checkAndFillSeasonStatsIfEmpty();
+  checkTimer = setInterval(() => {
+    void checkAndRefreshIfStale();
+    void checkAndFillSeasonStatsIfEmpty();
+  }, CHECK_INTERVAL_MS);
+  visibilityHandler = () => {
+    void checkAndRefreshIfStale();
+    void checkAndFillSeasonStatsIfEmpty();
+  };
   document.addEventListener("visibilitychange", visibilityHandler);
   return stopAutoRefreshWatch;
 }
