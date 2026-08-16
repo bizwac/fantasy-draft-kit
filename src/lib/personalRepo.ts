@@ -3,7 +3,7 @@ import { db } from "./db";
 import type { Draft, PersonalOverride } from "./types";
 import { loadTimerSettings, saveTimerSettings, type TimerSettings } from "./timerSettings";
 import { loadColumnSettings, saveColumnSettings, type ColumnSettings } from "./columnSettings";
-import { isRecentlyDeleted } from "./deletedDrafts";
+import { isRecentlyDeleted, loadTombstones, mergeTombstones, type Tombstone } from "./deletedDrafts";
 
 // Personal rankings/notes/favorites/DND are keyed by playerId and shared
 // across every draft (spec §3.2) — this is the one dataset that isn't
@@ -165,12 +165,17 @@ const PreferencesSchema = z
   })
   .optional();
 
+const TombstoneSchema = z.object({ id: z.string(), deletedAt: z.string() });
+
 const PersonalDataExportSchema = z.object({
   version: z.union([z.literal(1), z.literal(2)]),
   exportedAt: z.string(),
   overrides: z.array(PersonalOverrideSchema),
   drafts: z.array(DraftSchema).optional(),
-  preferences: PreferencesSchema
+  preferences: PreferencesSchema,
+  // Deletions only reach other devices if the tombstone itself is part
+  // of the synced payload — see deletedDrafts.ts.
+  deletedDrafts: z.array(TombstoneSchema).optional()
 });
 
 export interface PersonalDataExport {
@@ -179,6 +184,7 @@ export interface PersonalDataExport {
   overrides: PersonalOverride[];
   drafts: Draft[];
   preferences: { timerSettings: TimerSettings; columnSettings: ColumnSettings };
+  deletedDrafts: Tombstone[];
 }
 
 export async function exportPersonalData(): Promise<PersonalDataExport> {
@@ -188,7 +194,8 @@ export async function exportPersonalData(): Promise<PersonalDataExport> {
     exportedAt: new Date().toISOString(),
     overrides,
     drafts,
-    preferences: { timerSettings: loadTimerSettings(), columnSettings: loadColumnSettings() }
+    preferences: { timerSettings: loadTimerSettings(), columnSettings: loadColumnSettings() },
+    deletedDrafts: loadTombstones()
   };
 }
 
@@ -220,9 +227,17 @@ export interface ImportSummary {
 //      this (a deleted draft has no local record to compare against, so
 //      "not found locally" looks identical to "new from another
 //      device") — the tombstone in deletedDrafts.ts covers it instead.
-// The explicit "Restore from Cloud" button (a deliberate, one-off user
-// action) keeps the unguarded full overwrite, since there the user does
-// mean "put back exactly this" — including a draft deleted here since.
+// Tombstone handling itself isn't gated by protectNewerDrafts, unlike
+// the pick-regression check — it runs on every import, including the
+// explicit "Restore from Cloud" button. A tombstone means "this was
+// deliberately deleted, and that fact has already reached the cloud,"
+// which a restore should still honor; it's a different kind of fact
+// than "the cloud's pick count happens to be lower," which restore is
+// allowed to overwrite. Merging incoming tombstones into this device's
+// own list — and deleting any local draft that's tombstoned by either
+// side — is what actually lets a deletion reach a *different* device
+// (e.g. a Live View running on separate hardware) rather than just
+// protecting the one device that clicked Delete.
 export async function importPersonalData(
   json: unknown,
   options?: { protectNewerDrafts?: boolean }
@@ -231,6 +246,8 @@ export async function importPersonalData(
   if (!parsed.success) {
     return { merged: 0, draftsRestored: 0, errors: ["File isn't a valid Fade Signal personal-data export."] };
   }
+
+  mergeTombstones(parsed.data.deletedDrafts ?? []);
 
   const existing = await db.personalRankings.toArray();
   const byId = new Map(existing.map((o) => [o.playerId, o]));
@@ -242,17 +259,22 @@ export async function importPersonalData(
 
   await db.personalRankings.bulkPut([...byId.values()]);
 
-  let drafts = parsed.data.drafts ?? [];
+  let drafts = (parsed.data.drafts ?? []).filter((d) => !isRecentlyDeleted(d.id));
   if (options?.protectNewerDrafts && drafts.length > 0) {
     const existingDrafts = await db.drafts.bulkGet(drafts.map((d) => d.id));
     drafts = drafts.filter((incoming, i) => {
-      if (isRecentlyDeleted(incoming.id)) return false;
       const local = existingDrafts[i];
       return !local || incoming.picks.length >= local.picks.length;
     });
   }
   if (drafts.length > 0) {
     await db.drafts.bulkPut(drafts);
+  }
+
+  const localDraftIds = await db.drafts.toCollection().primaryKeys();
+  const tombstonedLocalIds = localDraftIds.filter((id) => isRecentlyDeleted(id as string));
+  if (tombstonedLocalIds.length > 0) {
+    await db.drafts.bulkDelete(tombstonedLocalIds);
   }
 
   if (parsed.data.preferences?.timerSettings) saveTimerSettings(parsed.data.preferences.timerSettings);
