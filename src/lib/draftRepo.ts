@@ -45,13 +45,18 @@ export async function deleteDraft(id: string): Promise<void> {
   // Personal rankings are a separate store keyed by playerId — deleting a
   // draft never touches them (spec §4.2).
   await db.drafts.delete(id);
-  // Record the tombstone and push immediately (not the debounced 3s
-  // push the Dexie "deleting" hook already schedules) — otherwise a
-  // Live View tab polling the cloud every 5s can still see the
-  // pre-deletion backup and pull the draft right back. See
-  // deletedDrafts.ts for the other half of this fix.
+  // Record the tombstone (see deletedDrafts.ts) and push immediately —
+  // *awaited*, not fire-and-forget, so the delete isn't considered done
+  // until the cloud actually reflects it. A fire-and-forget push left a
+  // window where the browser's own local tombstone (localStorage) was
+  // the only thing standing between "deleted" and "resurrected by the
+  // next pull" — and that tombstone doesn't survive the user clearing
+  // site data, which also wipes it. Awaiting the push doesn't fix the
+  // offline case (the push still just fails there, same as any other
+  // sync action in this app), but it closes the common case where nothing
+  // else clears local storage before the push would've landed anyway.
   recordDeletedDraft(id);
-  void pushBackupToCloud();
+  await pushBackupToCloud();
 }
 
 export async function updateDraftSettings(id: string, settings: DraftSettings): Promise<void> {
