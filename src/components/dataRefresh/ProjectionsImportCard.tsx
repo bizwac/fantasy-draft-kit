@@ -167,7 +167,7 @@ function ColumnSelect({
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium text-text-secondary">{label}</span>
       <select
-        className="rounded-md bg-surface-sunken pl-2 pr-7 py-2 min-h-touch"
+        className="select min-h-touch"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || undefined)}
       >

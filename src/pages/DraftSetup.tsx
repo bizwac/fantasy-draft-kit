@@ -127,7 +127,7 @@ export default function DraftSetup() {
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-text-secondary">Your draft slot</span>
           <select
-            className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch w-32"
+            className="select min-h-touch w-32"
             value={settings.myDraftSlot}
             onChange={(e) => setSettings((prev) => (prev ? { ...prev, myDraftSlot: Number(e.target.value) } : prev))}
           >

@@ -46,7 +46,7 @@ export default function ConfirmDraftSheet({
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-text-secondary">Drafted by</span>
           <select
-            className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch"
+            className="select min-h-touch"
             value={teamSlot}
             onChange={(e) => setTeamSlot(Number(e.target.value))}
             autoFocus

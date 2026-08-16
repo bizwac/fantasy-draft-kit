@@ -66,6 +66,53 @@
     background-color: var(--surface-raised);
     border: 1px solid var(--border);
   }
+
+  /* appearance: none replaces each browser/OS's own native caret, whose
+     size and edge margin isn't controllable via padding and varies
+     enough (iOS Safari especially) that padding-only fixes still read
+     as "too close to the edge" on some devices. Drawing the caret
+     ourselves via background-image makes it pixel-identical, and always
+     in app colors, everywhere. */
+  .select {
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 10px; /* matches Tailwind's rounded-md (tailwind.config.ts) */
+    background-color: var(--surface-sunken);
+    color: var(--text-primary);
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+    background-image: var(--select-caret);
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 0.8rem;
+  }
+
+  /* Same appearance: none rationale as .select — an unstyled native
+     checkbox also renders inconsistently sized/colored across browsers,
+     and had no app-color styling of its own before this. */
+  .checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    background-color: var(--surface-raised);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color var(--motion-fast), border-color var(--motion-fast);
+  }
+  .checkbox:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    background-image: var(--checkbox-check);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.75rem;
+  }
+  .checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 @media print {

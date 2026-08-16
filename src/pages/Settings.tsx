@@ -117,7 +117,7 @@ export default function Settings() {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-secondary">Teams</span>
             <select
-              className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch"
+              className="select min-h-touch"
               value={teams}
               onChange={(e) => setTeams(Number(e.target.value))}
             >
@@ -131,7 +131,7 @@ export default function Settings() {
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-secondary">Scoring</span>
             <select
-              className="rounded-md bg-surface-sunken pl-3 pr-8 py-2 min-h-touch"
+              className="select min-h-touch"
               value={scoring}
               onChange={(e) => setScoring(e.target.value as ScoringFormat)}
             >
@@ -235,6 +235,7 @@ export default function Settings() {
 
         <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
           <input
+            className="checkbox"
             type="checkbox"
             checked={timerSettings.enabled}
             onChange={(e) => update({ enabled: e.target.checked })}
@@ -261,6 +262,7 @@ export default function Settings() {
 
         <label className="flex items-center gap-1.5 text-sm text-text-secondary min-h-touch px-2">
           <input
+            className="checkbox"
             type="checkbox"
             checked={timerSettings.soundEnabled}
             disabled={!timerSettings.enabled}
@@ -303,6 +305,7 @@ export default function Settings() {
                 </button>
                 <label className="flex-1 flex items-center gap-2 text-sm min-h-touch">
                   <input
+                    className="checkbox"
                     type="checkbox"
                     checked={visible}
                     onChange={(e) => toggleColumnVisible(key, e.target.checked)}

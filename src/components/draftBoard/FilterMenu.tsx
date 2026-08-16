@@ -63,7 +63,7 @@ export default function FilterMenu({ options }: { options: FilterOption[] }) {
                 key={opt.key}
                 className="flex items-center gap-2 text-sm text-text-secondary min-h-touch px-2 rounded hover:bg-surface-sunken"
               >
-                <input type="checkbox" checked={opt.checked} onChange={(e) => opt.onChange(e.target.checked)} />
+                <input className="checkbox" type="checkbox" checked={opt.checked} onChange={(e) => opt.onChange(e.target.checked)} />
                 {opt.label}
               </label>
             ))}
