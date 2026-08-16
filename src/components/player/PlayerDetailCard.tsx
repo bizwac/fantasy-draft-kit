@@ -232,7 +232,7 @@ export default function PlayerDetailCard({
           role="presentation"
         >
           <div
-            className="card w-full sm:max-w-2xl h-[85vh] flex flex-col overflow-hidden"
+            className="card w-full h-full sm:w-[95vw] sm:h-[92vh] sm:max-w-5xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -260,6 +260,7 @@ export default function PlayerDetailCard({
             <iframe
               src={huddleNewsUrl(huddleEntry)}
               title={`${player.name} — TheHuddle`}
+              scrolling="yes"
               className="flex-1 w-full border-0"
             />
           </div>
