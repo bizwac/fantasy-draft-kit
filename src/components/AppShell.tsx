@@ -8,7 +8,6 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 
 const NAV_ITEMS = [
   { to: "/", label: "Drafts", end: true },
-  { to: "/refresh", label: "Data Refresh" },
   { to: "/my-board", label: "My Board" },
   { to: "/settings", label: "Settings" }
 ];

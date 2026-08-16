@@ -1,30 +1,8 @@
 import { useRef, useState } from "react";
 import { applyProjectionImport } from "@/lib/dataSources/projectionsImport";
 import { parseCsvFile, applyColumnMapping, type ProjectionColumnMapping } from "@/lib/dataSources/csvImport";
-import { loadRefreshStatus, saveRefreshStatus } from "@/lib/refreshStatus";
-import PreDraftChecklist from "@/components/dataRefresh/PreDraftChecklist";
 
-export default function DataRefresh() {
-  const [lastImportAt, setLastImportAt] = useState<string | null>(() => loadRefreshStatus().lastProjectionsImportAt);
-
-  return (
-    <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-24">
-      <h1 className="text-2xl font-display">Data Refresh</h1>
-
-      <ProjectionsImportCard
-        onImported={(at) => {
-          setLastImportAt(at);
-          saveRefreshStatus({ ...loadRefreshStatus(), lastProjectionsImportAt: at });
-        }}
-        lastImportAt={lastImportAt}
-      />
-
-      <PreDraftChecklist />
-    </div>
-  );
-}
-
-function ProjectionsImportCard({
+export default function ProjectionsImportCard({
   onImported,
   lastImportAt
 }: {

@@ -10,6 +10,8 @@ import type { ScoringFormat } from "@/lib/types";
 import { db } from "@/lib/db";
 import RankedList from "@/components/shared/RankedList";
 import CloudSyncPanel from "@/components/settings/CloudSyncPanel";
+import ProjectionsImportCard from "@/components/dataRefresh/ProjectionsImportCard";
+import PreDraftChecklist from "@/components/dataRefresh/PreDraftChecklist";
 
 const TEAM_OPTIONS = [8, 10, 12, 14];
 const SCORING_OPTIONS: Array<{ value: ScoringFormat; label: string }> = [
@@ -152,6 +154,17 @@ export default function Settings() {
           </p>
         )}
       </section>
+
+      <ProjectionsImportCard
+        onImported={(at) => {
+          const next = { ...refreshStatus, lastProjectionsImportAt: at };
+          setRefreshStatus(next);
+          saveRefreshStatus(next);
+        }}
+        lastImportAt={refreshStatus.lastProjectionsImportAt}
+      />
+
+      <PreDraftChecklist />
 
       <section className="card p-5 flex flex-col gap-4">
         <div>
