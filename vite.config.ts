@@ -33,6 +33,14 @@ export default defineConfig(({ command }) => ({
     command === "serve" && mkcert(),
     VitePWA({
       registerType: "autoUpdate",
+      // Registered manually in main.tsx via virtual:pwa-register instead
+      // of the default auto-injected script, which only calls
+      // navigator.serviceWorker.register() once on load and never checks
+      // again — in this SPA, client-side route changes don't trigger the
+      // browser's own (infrequent, navigation-triggered) update check
+      // either, so a long-lived session (especially an installed Home
+      // Screen PWA on iOS) could run stale code indefinitely otherwise.
+      injectRegister: false,
       includeAssets: ["brand/icon-mono-512.png"],
       manifest: {
         name: "Fade Signal — Draft-Day Kit",
