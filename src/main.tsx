@@ -21,6 +21,25 @@ startAutoRefreshWatch();
 // explicitly, so a long-lived session — an installed Home Screen PWA
 // especially, which can sit open/backgrounded for days — actually picks
 // up a new deploy instead of silently running stale code indefinitely.
+//
+// Finding a new SW isn't enough on its own, though: skipWaiting +
+// clientsClaim (vite.config.ts) let the new worker take over instantly,
+// but a tab that's already loaded keeps running the OLD JS it has in
+// memory until something reloads it — this is exactly what left the
+// site stuck showing a removed feature (Pre-Draft Checklist) on a phone
+// that hadn't been reloaded since before a deploy. `controllerchange`
+// fires the instant the new worker actually takes control, so reloading
+// there closes the loop automatically. Safe to do unconditionally here:
+// every pick/draft write already lands in IndexedDB immediately (see
+// pickRepo.ts), so a reload can't lose draft data — worst case it clears
+// something transient like an unsaved note or closes an open panel.
+let refreshedForUpdate = false;
+navigator.serviceWorker?.addEventListener("controllerchange", () => {
+  if (refreshedForUpdate) return;
+  refreshedForUpdate = true;
+  window.location.reload();
+});
+
 registerSW({
   immediate: true,
   onRegisteredSW(_url, registration) {
