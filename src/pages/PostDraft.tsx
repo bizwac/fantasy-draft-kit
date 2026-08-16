@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { buildPostDraftGrid, computeReachesAndSteals, computeTeamProjections, topStealsAndReaches } from "@/lib/postDraft";
@@ -34,7 +34,10 @@ export default function PostDraft() {
 
   if (draft.picks.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto flex flex-col gap-4">
+        <Link to={`/draft/${id}/board`} className="btn-secondary text-sm self-start">
+          Back to Draft
+        </Link>
         <div className="card p-8 text-center text-text-secondary">No picks yet — results will appear once the draft starts.</div>
       </div>
     );
@@ -42,11 +45,16 @@ export default function PostDraft() {
 
   return (
     <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-24 print:max-w-none">
-      <div className="flex items-center justify-between gap-3 print:hidden">
+      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
         <h1 className="text-2xl font-display">{draft.name} — Results</h1>
-        <button type="button" className="btn-secondary text-sm" onClick={() => window.print()}>
-          Export as PDF
-        </button>
+        <div className="flex gap-2">
+          <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
+            Back to Draft
+          </Link>
+          <button type="button" className="btn-secondary text-sm" onClick={() => window.print()}>
+            Export as PDF
+          </button>
+        </div>
       </div>
 
       <section className="flex flex-col gap-3">
