@@ -99,7 +99,7 @@ export default function AppShell() {
       )}
 
       <nav
-        className="hidden md:flex md:flex-col md:w-56 shrink-0 border-r border-border px-4 gap-6 overflow-y-auto print:hidden"
+        className="hidden md:flex md:flex-col md:w-56 shrink-0 border-r border-border bg-surface px-4 gap-6 overflow-y-auto print:hidden"
         style={{
           // max(), not +, as a floor: iPadOS has a known quirk where
           // safe-area-inset-top under-reports (sometimes 0) for a
@@ -129,7 +129,7 @@ export default function AppShell() {
       </nav>
 
       <main
-        className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8"
+        className="flex-1 min-w-0 overflow-y-auto bg-surface p-4 md:p-8"
         style={{
           // Same defensive floor as the sidebar (see its own comment) —
           // this is what was missing here, leaving content like Home's
