@@ -110,7 +110,12 @@ async function isLocalDataEmpty(): Promise<boolean> {
 export async function autoPullIfLocalEmpty(): Promise<void> {
   if (!navigator.onLine) return;
   if (!(await isLocalDataEmpty())) return;
-  await pullBackupFromCloud();
+  // protectNewerDrafts here isn't about pick-count regression (there's
+  // nothing local to regress) — it's the tombstone check: deleting your
+  // only draft empties local data, and reloading right after (before
+  // the delete's push lands) would otherwise resurrect it straight from
+  // the stale cloud snapshot.
+  await pullBackupFromCloud({ protectNewerDrafts: true });
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;

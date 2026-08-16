@@ -3,6 +3,7 @@ import { db } from "./db";
 import type { Draft, PersonalOverride } from "./types";
 import { loadTimerSettings, saveTimerSettings, type TimerSettings } from "./timerSettings";
 import { loadColumnSettings, saveColumnSettings, type ColumnSettings } from "./columnSettings";
+import { isRecentlyDeleted } from "./deletedDrafts";
 
 // Personal rankings/notes/favorites/DND are keyed by playerId and shared
 // across every draft (spec §3.2) — this is the one dataset that isn't
@@ -205,16 +206,23 @@ export interface ImportSummary {
 // back exactly what was exported, not field-merge with what's there now.
 //
 // `protectNewerDrafts` guards the automatic background pull (see
-// cloudSync.ts's startAutoPull) against a real race: a pick pushes to
-// the cloud ~3s after it's made (debounced), but the presentation view
-// polls the cloud every 5s — if that poll lands in the gap, it fetches a
-// snapshot that doesn't have the just-made pick yet and, on a full
-// overwrite, would erase it from the *shared* local IndexedDB (both
-// tabs read the same origin's storage), undoing the pick the drafter
-// just watched land. Skipping any draft whose incoming pick count would
-// go backwards closes that window; the explicit "Restore from Cloud"
-// button (a deliberate, one-off user action) keeps the unguarded full
-// overwrite, since there the user does mean "put back exactly this".
+// cloudSync.ts's startAutoPull) against two real races:
+//   1. A pick pushes to the cloud ~3s after it's made (debounced), but
+//      the presentation view polls every 5s — if that poll lands in the
+//      gap, it fetches a snapshot missing the just-made pick and, on a
+//      full overwrite, would erase it from the *shared* local IndexedDB
+//      (both tabs read the same origin's storage). Skipping any draft
+//      whose incoming pick count would go backwards closes this.
+//   2. The same gap applies to a *deleted* draft — its own push is now
+//      immediate (see draftRepo.ts's deleteDraft) rather than debounced,
+//      but a poll can still land before that push completes and resurrect
+//      it from a stale snapshot. The pick-count check alone can't catch
+//      this (a deleted draft has no local record to compare against, so
+//      "not found locally" looks identical to "new from another
+//      device") — the tombstone in deletedDrafts.ts covers it instead.
+// The explicit "Restore from Cloud" button (a deliberate, one-off user
+// action) keeps the unguarded full overwrite, since there the user does
+// mean "put back exactly this" — including a draft deleted here since.
 export async function importPersonalData(
   json: unknown,
   options?: { protectNewerDrafts?: boolean }
@@ -238,6 +246,7 @@ export async function importPersonalData(
   if (options?.protectNewerDrafts && drafts.length > 0) {
     const existingDrafts = await db.drafts.bulkGet(drafts.map((d) => d.id));
     drafts = drafts.filter((incoming, i) => {
+      if (isRecentlyDeleted(incoming.id)) return false;
       const local = existingDrafts[i];
       return !local || incoming.picks.length >= local.picks.length;
     });
