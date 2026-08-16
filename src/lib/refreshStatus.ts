@@ -1,14 +1,26 @@
 import type { SourceOutcome } from "./dataSources/refresh";
+import type { ScoringFormat } from "./types";
 
 const STORAGE_KEY = "fade-signal:refreshStatus";
+
+export interface RefreshSettings {
+  teams: number;
+  scoring: ScoringFormat;
+  year: number;
+}
 
 export interface RefreshStatus {
   sleeper: SourceOutcome | null;
   adp: SourceOutcome | null;
   lastProjectionsImportAt: string | null;
+  // Remembered so a manual refresh doesn't reset to defaults between
+  // visits, and so the background auto-refresh (see dataSources/
+  // autoRefresh.ts) knows what league shape to fetch ADP for without a
+  // person there to ask.
+  lastUsedSettings: RefreshSettings | null;
 }
 
-const EMPTY: RefreshStatus = { sleeper: null, adp: null, lastProjectionsImportAt: null };
+const EMPTY: RefreshStatus = { sleeper: null, adp: null, lastProjectionsImportAt: null, lastUsedSettings: null };
 
 export function loadRefreshStatus(): RefreshStatus {
   try {

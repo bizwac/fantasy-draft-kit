@@ -1,168 +1,27 @@
-import { useEffect, useRef, useState } from "react";
-import { getStorageEstimate } from "@/lib/persistence";
-import { refreshPlayerData, type RefreshResult } from "@/lib/dataSources/refresh";
+import { useRef, useState } from "react";
 import { applyProjectionImport } from "@/lib/dataSources/projectionsImport";
 import { parseCsvFile, applyColumnMapping, type ProjectionColumnMapping } from "@/lib/dataSources/csvImport";
-import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshStatus } from "@/lib/refreshStatus";
-import type { ScoringFormat } from "@/lib/types";
-import { db } from "@/lib/db";
+import { loadRefreshStatus, saveRefreshStatus } from "@/lib/refreshStatus";
 import PreDraftChecklist from "@/components/dataRefresh/PreDraftChecklist";
 
-const TEAM_OPTIONS = [8, 10, 12, 14];
-const SCORING_OPTIONS: Array<{ value: ScoringFormat; label: string }> = [
-  { value: "ppr", label: "Full PPR" },
-  { value: "half", label: "Half PPR" },
-  { value: "std", label: "Standard" },
-  { value: "superflex-ppr", label: "Superflex" }
-];
-
 export default function DataRefresh() {
-  const [storage, setStorage] = useState<Awaited<ReturnType<typeof getStorageEstimate>> | null>(null);
-  const [status, setStatus] = useState<RefreshStatus>(() => loadRefreshStatus());
-  const [teams, setTeams] = useState(12);
-  const [scoring, setScoring] = useState<ScoringFormat>("ppr");
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastResult, setLastResult] = useState<RefreshResult | null>(null);
-  const [playerCount, setPlayerCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    getStorageEstimate().then(setStorage);
-    db.players.count().then(setPlayerCount);
-  }, [lastResult]);
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    try {
-      const result = await refreshPlayerData({ teams, scoring, year });
-      setLastResult(result);
-      const next: RefreshStatus = {
-        ...status,
-        sleeper: result.sleeper,
-        adp: result.adp
-      };
-      setStatus(next);
-      saveRefreshStatus(next);
-    } finally {
-      setRefreshing(false);
-    }
-  }
+  const [lastImportAt, setLastImportAt] = useState<string | null>(() => loadRefreshStatus().lastProjectionsImportAt);
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-24">
       <h1 className="text-2xl font-display">Data Refresh</h1>
 
-      <section className="card p-5 flex flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-secondary">Teams</span>
-            <select
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch"
-              value={teams}
-              onChange={(e) => setTeams(Number(e.target.value))}
-            >
-              {TEAM_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-secondary">Scoring</span>
-            <select
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch"
-              value={scoring}
-              onChange={(e) => setScoring(e.target.value as ScoringFormat)}
-            >
-              {SCORING_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-text-secondary">Season</span>
-            <input
-              type="number"
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch w-24"
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            />
-          </label>
-          <button type="button" className="btn-primary" onClick={handleRefresh} disabled={refreshing}>
-            {refreshing ? "Refreshing…" : "Refresh Player Data"}
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2 text-sm">
-          <SourceRow label="Sleeper (players, injuries, depth)" outcome={status.sleeper} />
-          <SourceRow label="Fantasy Football Calculator (ADP)" outcome={status.adp} />
-        </div>
-
-        {playerCount !== null && (
-          <p className="text-sm text-text-secondary">{playerCount} players in the local dataset.</p>
-        )}
-
-        {storage && (
-          <p className="text-xs text-text-secondary">
-            Storage: {storage.usageMB?.toFixed(1) ?? "—"} MB used
-            {storage.quotaMB ? ` of ${storage.quotaMB.toFixed(0)} MB` : ""} ·{" "}
-            {storage.persisted ? "persisted (protected from eviction)" : "not yet persisted"}
-          </p>
-        )}
-      </section>
-
       <ProjectionsImportCard
         onImported={(at) => {
-          const next = { ...status, lastProjectionsImportAt: at };
-          setStatus(next);
-          saveRefreshStatus(next);
+          setLastImportAt(at);
+          saveRefreshStatus({ ...loadRefreshStatus(), lastProjectionsImportAt: at });
         }}
-        lastImportAt={status.lastProjectionsImportAt}
+        lastImportAt={lastImportAt}
       />
 
       <PreDraftChecklist />
     </div>
   );
-}
-
-function SourceRow({ label, outcome }: { label: string; outcome: RefreshStatus["sleeper"] }) {
-  if (!outcome) {
-    return (
-      <div className="flex items-center justify-between text-text-secondary">
-        <span>{label}</span>
-        <span>Never refreshed</span>
-      </div>
-    );
-  }
-  const stale = isStale(outcome.at);
-  return (
-    <div className="flex items-center justify-between">
-      <span>{label}</span>
-      <span className="flex items-center gap-2">
-        {outcome.ok ? (
-          <>
-            <StatusDot color="var(--success)" />
-            <span>
-              {outcome.count} loaded · as of {new Date(outcome.at).toLocaleString()}
-              {stale && <span className="text-warning"> (stale)</span>}
-            </span>
-          </>
-        ) : (
-          <>
-            <StatusDot color="var(--danger)" />
-            <span className="text-danger">{outcome.error ?? "Failed"}</span>
-          </>
-        )}
-      </span>
-    </div>
-  );
-}
-
-function StatusDot({ color }: { color: string }) {
-  return <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />;
 }
 
 function ProjectionsImportCard({

@@ -4,11 +4,13 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { requestPersistentStorage } from "./lib/persistence";
 import { autoPullIfLocalEmpty, installCloudSyncHooks } from "./lib/cloudSync";
+import { startAutoRefreshWatch } from "./lib/dataSources/autoRefresh";
 import "./styles/index.css";
 
 void requestPersistentStorage();
 installCloudSyncHooks();
 void autoPullIfLocalEmpty();
+startAutoRefreshWatch();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
