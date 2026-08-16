@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { locationForOverallPick, nextPickForSlot, rosterSlotCount } from "@/lib/draftMath";
-import { addPick, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
+import { addPick, autoPickCpu, correctPick, deletePick, undoLastPick } from "@/lib/pickRepo";
 import { setTimerRunning } from "@/lib/draftRepo";
 import { assignTiers, computeAuctionValues, computeVorp, replacementLevels, replacementRanks } from "@/lib/valueMetrics";
 import { buildRosterState } from "@/lib/rosterTracker";
@@ -186,26 +186,19 @@ export default function DraftBoard() {
   // instantly, the moment it's their turn. Re-fires after each pick
   // (draft.picks.length changing produces a new `draft` via the live
   // query), chaining through consecutive CPU turns until it lands back
-  // on my slot or the draft ends. autoPickingRef guards against firing
-  // twice for the same turn (e.g. React 18 Strict Mode's double-invoke
-  // in dev) — addPick itself is a no-op for an already-drafted player,
-  // but the guard also avoids two different CPU players being picked
-  // for the same team slot in a race.
+  // on my slot or the draft ends. autoPickCpu computes on-the-clock and
+  // writes the pick inside one Dexie transaction (see pickRepo.ts) —
+  // it doesn't trust the `draft` snapshot captured here for *who* to
+  // assign the pick to, only for *whether to attempt one at all*, since
+  // that snapshot can go stale against a concurrent manual pick.
+  // autoPickingRef just avoids two overlapping attempts from this
+  // effect itself.
   const autoPickingRef = useRef(false);
   useEffect(() => {
     if (!draft || !players || !draft.isMock || isDraftOver) return;
-    const onClockNow = locationForOverallPick(draft.picks.length + 1, draft.settings.teams);
-    if (onClockNow.teamSlot === draft.settings.myDraftSlot) return;
     if (autoPickingRef.current) return;
-    const draftedNow = new Set(draft.picks.map((p) => p.playerId));
-    let best: Player | null = null;
-    for (const p of players) {
-      if (p.adp === null || draftedNow.has(p.id)) continue;
-      if (!best || p.adp < (best.adp as number)) best = p;
-    }
-    if (!best) return;
     autoPickingRef.current = true;
-    addPick(draft.id, best.id, onClockNow.teamSlot).finally(() => {
+    autoPickCpu(draft.id, players, draft.settings.myDraftSlot).finally(() => {
       autoPickingRef.current = false;
     });
   }, [draft, players, isDraftOver]);

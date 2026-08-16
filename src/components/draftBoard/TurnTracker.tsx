@@ -43,7 +43,11 @@ export default function TurnTracker({
               running={timerRunning}
               soundEnabled={timerSettings.soundEnabled}
             />
-            <button type="button" className="btn-secondary text-xs" onClick={onToggleTimerRunning}>
+            <button
+              type="button"
+              className="rounded-full bg-surface-sunken text-text-secondary hover:text-text-primary px-2.5 py-1 text-xs font-semibold transition-colors"
+              onClick={onToggleTimerRunning}
+            >
               {timerRunning ? "Pause Timer" : "Start Timer"}
             </button>
           </>

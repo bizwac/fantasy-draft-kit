@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { locationForOverallPick } from "./draftMath";
-import type { Pick } from "./types";
+import { locationForOverallPick, rosterSlotCount } from "./draftMath";
+import type { Pick, Player } from "./types";
 
 // All board state (on-the-clock, best available, roster tracker) derives
 // from `Draft.picks` alone (spec §3.3) — these are the only writes to
@@ -87,5 +87,41 @@ export async function deletePick(draftId: string, overall: number): Promise<void
     const draft = await db.drafts.get(draftId);
     if (!draft) return;
     await db.drafts.update(draftId, { picks: applyDeletePick(draft.picks, overall, draft.settings.teams) });
+  });
+}
+
+// Mock drafts' CPU auto-pick — deliberately computes who's on the clock
+// *inside* the same transaction that writes the pick, rather than
+// taking a precomputed teamSlot from the caller (unlike addPick, whose
+// explicit teamSlot is a deliberate feature — reassigning a pick to any
+// team for a real draft entered after the fact). The caller (DraftBoard's
+// auto-pick effect) only knows "on the clock" from React state, which
+// can go stale between that read and this write actually landing — e.g.
+// racing the user's own addPick for their turn right at a round
+// boundary. If the outer teamSlot were trusted, a pick could land with
+// the correct overall/round/slot (computed fresh here) but the *wrong*
+// team attached, corrupting the snake order for everything after it.
+// Re-fetching the draft and computing on-the-clock right before the
+// write closes that window — Dexie serializes writes to db.drafts, so
+// whichever transaction actually runs second sees the other's result.
+// Returns whether a pick was made (false if it's the user's turn, the
+// draft is over, or no undrafted player has an ADP).
+export async function autoPickCpu(draftId: string, players: Player[], myDraftSlot: number): Promise<boolean> {
+  return db.transaction("rw", db.drafts, async () => {
+    const draft = await db.drafts.get(draftId);
+    if (!draft) return false;
+    const totalRounds = rosterSlotCount(draft.settings.rosterSlots);
+    if (draft.picks.length >= draft.settings.teams * totalRounds) return false;
+    const onClock = locationForOverallPick(draft.picks.length + 1, draft.settings.teams);
+    if (onClock.teamSlot === myDraftSlot) return false;
+    const draftedIds = new Set(draft.picks.map((p) => p.playerId));
+    let best: Player | null = null;
+    for (const p of players) {
+      if (p.adp === null || draftedIds.has(p.id)) continue;
+      if (!best || p.adp < (best.adp as number)) best = p;
+    }
+    if (!best) return false;
+    await db.drafts.update(draftId, { picks: applyAddPick(draft.picks, best.id, onClock.teamSlot, draft.settings.teams) });
+    return true;
   });
 }
