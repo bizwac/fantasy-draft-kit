@@ -47,10 +47,6 @@ export default function PresentBoard() {
     }
   }
 
-  function openPopout() {
-    window.open(window.location.href, "_blank", "width=1440,height=960,noopener");
-  }
-
   if (!draft || !players) {
     return <div className="min-h-dvh flex items-center justify-center text-text-secondary">Loading…</div>;
   }
@@ -89,9 +85,6 @@ export default function PresentBoard() {
           <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
             Back to Board
           </Link>
-          <button type="button" className="btn-secondary text-sm" onClick={openPopout}>
-            Pop Out
-          </button>
           <button type="button" className="btn-secondary text-sm" onClick={toggleFullscreen}>
             {isFullscreen ? "Exit Full Screen" : "Full Screen"}
           </button>
