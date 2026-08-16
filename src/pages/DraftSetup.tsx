@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { renameDraft, updateDraftSettings } from "@/lib/draftRepo";
 import type { Draft, DraftSettings, RosterSlots, ScoringFormat } from "@/lib/types";
 import Badge from "@/components/player/Badge";
+import PageHeader from "@/components/shared/PageHeader";
 
 const TEAM_COUNT_OPTIONS = [8, 10, 12, 14];
 const SCORING_PRESETS: Array<{ value: ScoringFormat; label: string }> = [
@@ -81,18 +82,20 @@ export default function DraftSetup() {
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-8 pb-24">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-display flex items-center gap-2">
-          Draft Setup
-          {draft.isMock && <Badge tone="info">Mock</Badge>}
-        </h1>
-        {draft.isMock && (
-          <p className="text-sm text-text-secondary">
-            Every other team will auto-pick best-ADP-available the instant it's their turn — you only need to make
-            your own picks.
-          </p>
-        )}
-      </div>
+      <PageHeader>
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-2xl font-display flex items-center gap-2">
+            Draft Setup
+            {draft.isMock && <Badge tone="info">Mock</Badge>}
+          </h1>
+          {draft.isMock && (
+            <p className="text-sm text-text-secondary">
+              Every other team will auto-pick best-ADP-available the instant it's their turn — you only need to make
+              your own picks.
+            </p>
+          )}
+        </div>
+      </PageHeader>
 
       <section className="card p-5 flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">

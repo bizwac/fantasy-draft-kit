@@ -13,6 +13,7 @@ import {
 } from "@/lib/personalRepo";
 import type { Player } from "@/lib/types";
 import RankedList from "@/components/shared/RankedList";
+import PageHeader from "@/components/shared/PageHeader";
 import PersonalPlayerRow from "@/components/myBoard/PersonalPlayerRow";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
@@ -113,30 +114,32 @@ export default function MyBoard() {
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-24">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl font-display">My Board</h1>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex gap-2">
-            <button type="button" className="btn-secondary text-sm" onClick={handleExport}>
-              Export Backup
-            </button>
-            <button type="button" className="btn-secondary text-sm" onClick={() => fileInputRef.current?.click()}>
-              Import Backup
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleImportFile(file);
-              }}
-            />
+      <PageHeader>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="text-2xl font-display">My Board</h1>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2">
+              <button type="button" className="btn-secondary text-sm" onClick={handleExport}>
+                Export Backup
+              </button>
+              <button type="button" className="btn-secondary text-sm" onClick={() => fileInputRef.current?.click()}>
+                Import Backup
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFile(file);
+                }}
+              />
+            </div>
+            <p className="text-xs text-text-secondary">Includes favorites/notes/ranks and all drafts</p>
           </div>
-          <p className="text-xs text-text-secondary">Includes favorites/notes/ranks and all drafts</p>
         </div>
-      </div>
+      </PageHeader>
       {importResult && <p className="text-sm text-text-secondary">{importResult}</p>}
 
       <div className="flex gap-2">

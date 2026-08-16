@@ -1,7 +1,9 @@
 import { useState } from "react";
+import type { UIEvent } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useTheme } from "@/lib/useTheme";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
+import { MainScrolledContext } from "@/lib/scrollContext";
 import logoLight from "@/assets/brand/lockup-light.png";
 import logoDark from "@/assets/brand/lockup-dark.png";
 import ThemeToggle from "@/components/shared/ThemeToggle";
@@ -23,9 +25,14 @@ export default function AppShell() {
   const { preference, setPreference } = useTheme();
   const online = useOnlineStatus();
   const [navOpen, setNavOpen] = useState(false);
+  const [mainScrolled, setMainScrolled] = useState(false);
+
+  function handleMainScroll(e: UIEvent<HTMLElement>) {
+    setMainScrolled(e.currentTarget.scrollTop > 2);
+  }
 
   return (
-    <div className="min-h-dvh flex flex-col md:flex-row">
+    <div className="h-dvh flex flex-col md:flex-row overflow-hidden">
       <header className="md:hidden flex items-center justify-between px-4 py-2 border-b border-border print:hidden">
         <button
           type="button"
@@ -121,8 +128,21 @@ export default function AppShell() {
         </div>
       </nav>
 
-      <main className="flex-1 min-w-0 p-4 md:p-8 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-        <Outlet />
+      <main
+        className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8"
+        style={{
+          // Same defensive floor as the sidebar (see its own comment) —
+          // this is what was missing here, leaving content like Home's
+          // "New Draft"/"New Mock Draft" buttons sitting right under the
+          // iPad status bar in standalone landscape.
+          paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem))"
+        }}
+        onScroll={handleMainScroll}
+      >
+        <MainScrolledContext.Provider value={mainScrolled}>
+          <Outlet />
+        </MainScrolledContext.Provider>
       </main>
     </div>
   );

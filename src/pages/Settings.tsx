@@ -11,6 +11,7 @@ import { loadRefreshStatus, saveRefreshStatus, isStale, type RefreshStatus } fro
 import type { ScoringFormat } from "@/lib/types";
 import { db } from "@/lib/db";
 import RankedList from "@/components/shared/RankedList";
+import PageHeader from "@/components/shared/PageHeader";
 import CloudSyncPanel from "@/components/settings/CloudSyncPanel";
 import ProjectionsImportCard from "@/components/dataRefresh/ProjectionsImportCard";
 
@@ -122,7 +123,9 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-24">
-      <h1 className="text-2xl font-display">Settings</h1>
+      <PageHeader>
+        <h1 className="text-2xl font-display">Settings</h1>
+      </PageHeader>
 
       <section className="card p-5 flex flex-col gap-4">
         <div>

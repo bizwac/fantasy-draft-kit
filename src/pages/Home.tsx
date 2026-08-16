@@ -6,6 +6,7 @@ import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
 import { rosterSlotCount } from "@/lib/draftMath";
 import type { Draft } from "@/lib/types";
 import Badge from "@/components/player/Badge";
+import PageHeader from "@/components/shared/PageHeader";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -23,17 +24,19 @@ export default function Home() {
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-display">Drafts</h1>
-        <div className="flex gap-2">
-          <button type="button" className="btn-secondary" onClick={handleCreateMock}>
-            New Mock Draft
-          </button>
-          <button type="button" className="btn-primary" onClick={handleCreate}>
-            New Draft
-          </button>
+      <PageHeader>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-2xl font-display">Drafts</h1>
+          <div className="flex gap-2">
+            <button type="button" className="btn-secondary" onClick={handleCreateMock}>
+              New Mock Draft
+            </button>
+            <button type="button" className="btn-primary" onClick={handleCreate}>
+              New Draft
+            </button>
+          </div>
         </div>
-      </div>
+      </PageHeader>
 
       {drafts === undefined && <p className="text-text-secondary">Loading…</p>}
 
