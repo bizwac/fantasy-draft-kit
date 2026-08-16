@@ -11,7 +11,6 @@ import { db } from "@/lib/db";
 import RankedList from "@/components/shared/RankedList";
 import CloudSyncPanel from "@/components/settings/CloudSyncPanel";
 import ProjectionsImportCard from "@/components/dataRefresh/ProjectionsImportCard";
-import PreDraftChecklist from "@/components/dataRefresh/PreDraftChecklist";
 
 const TEAM_OPTIONS = [8, 10, 12, 14];
 const SCORING_OPTIONS: Array<{ value: ScoringFormat; label: string }> = [
@@ -163,8 +162,6 @@ export default function Settings() {
         }}
         lastImportAt={refreshStatus.lastProjectionsImportAt}
       />
-
-      <PreDraftChecklist />
 
       <section className="card p-5 flex flex-col gap-4">
         <div>
