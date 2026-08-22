@@ -71,7 +71,7 @@ export default function OnClockTimer({
     <button
       type="button"
       onClick={onToggleRunning}
-      className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken hover:bg-border px-2.5 py-1 min-h-touch text-xs font-semibold tabular-nums transition-colors"
+      className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken hover:bg-border px-2.5 py-1 text-xs font-semibold tabular-nums transition-colors"
       aria-label={running ? "Pause timer" : "Start timer"}
       title={running ? "Pause timer" : "Start timer"}
     >
