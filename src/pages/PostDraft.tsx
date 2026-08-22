@@ -57,6 +57,9 @@ export default function PostDraft() {
             <Link to={`/draft/${id}/board`} className="btn-secondary text-sm">
               Back to Draft
             </Link>
+            <Link to={`/draft/${id}/setup`} className="btn-secondary text-sm">
+              Edit Settings
+            </Link>
             <button type="button" className="btn-secondary text-sm" onClick={() => window.print()}>
               Export as PDF
             </button>

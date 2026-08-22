@@ -66,15 +66,20 @@ export default function DraftSetup() {
     setSettings((prev) => (prev ? { ...prev, rosterSlots: { ...prev.rosterSlots, [key]: value } } : prev));
   }
 
-  async function handleSave(startLive: boolean) {
+  const hasPicks = draft.picks.length > 0;
+  const backTo = draft.status === "complete" ? `/draft/${id}/results` : `/draft/${id}/board`;
+
+  async function handleSave(mode: "save" | "start" | "update") {
     if (!id || !settings) return;
     const cleanedNames = settings.teamNames.map((n, i) => (n.trim() ? n.trim() : `Team ${i + 1}`));
     const cleanedSettings: DraftSettings = { ...settings, teamNames: cleanedNames };
     await renameDraft(id, name);
     await updateDraftSettings(id, cleanedSettings);
-    if (startLive) {
+    if (mode === "start") {
       await db.drafts.update(id, { status: "live" });
       navigate(`/draft/${id}/board`);
+    } else if (mode === "update") {
+      navigate(backTo);
     } else {
       navigate("/");
     }
@@ -85,7 +90,7 @@ export default function DraftSetup() {
       <PageHeader>
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-display flex items-center gap-2">
-            Draft Setup
+            {draft.status === "setup" ? "Draft Setup" : "Edit Draft Settings"}
             {draft.isMock && <Badge tone="info">Mock</Badge>}
           </h1>
           {draft.isMock && (
@@ -111,14 +116,22 @@ export default function DraftSetup() {
 
       <section className="card p-5 flex flex-col gap-4">
         <h2 className="font-display font-semibold">Teams</h2>
+        {hasPicks && (
+          <p className="text-xs text-text-secondary">
+            Team count and your draft slot can't change once the draft has picks — they'd renumber whose pick is
+            whose. Team names, scoring, and roster slots are still safe to edit anytime.
+          </p>
+        )}
         <div className="flex gap-2">
           {TEAM_COUNT_OPTIONS.map((n) => (
             <button
               key={n}
               type="button"
+              disabled={hasPicks}
               onClick={() => setTeamCount(n)}
               className={[
                 "min-h-touch min-w-touch rounded-md px-4 font-medium transition-colors",
+                hasPicks ? "opacity-50 cursor-not-allowed" : "",
                 settings.teams === n ? "bg-accent text-accent-ink" : "bg-surface-sunken text-text-primary"
               ].join(" ")}
             >
@@ -132,6 +145,7 @@ export default function DraftSetup() {
           <select
             className="select min-h-touch w-32"
             value={settings.myDraftSlot}
+            disabled={hasPicks}
             onChange={(e) => setSettings((prev) => (prev ? { ...prev, myDraftSlot: Number(e.target.value) } : prev))}
           >
             {Array.from({ length: settings.teams }, (_, i) => i + 1).map((slot) => (
@@ -144,13 +158,15 @@ export default function DraftSetup() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {settings.teamNames.map((teamName, i) => (
-            <input
-              key={i}
-              className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch"
-              value={teamName}
-              onChange={(e) => setTeamName(i, e.target.value)}
-              placeholder={`Team ${i + 1}`}
-            />
+            <label key={i} className="flex items-center gap-2">
+              <span className="text-xs font-medium text-text-secondary w-12 shrink-0">Slot {i + 1}</span>
+              <input
+                className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch flex-1 min-w-0"
+                value={teamName}
+                onChange={(e) => setTeamName(i, e.target.value)}
+                placeholder={`Team ${i + 1}`}
+              />
+            </label>
           ))}
         </div>
       </section>
@@ -194,12 +210,25 @@ export default function DraftSetup() {
       </section>
 
       <div className="flex gap-3 justify-end">
-        <button type="button" className="btn-secondary" onClick={() => handleSave(false)}>
-          Save for later
-        </button>
-        <button type="button" className="btn-primary" onClick={() => handleSave(true)}>
-          Start Draft
-        </button>
+        {draft.status === "setup" ? (
+          <>
+            <button type="button" className="btn-secondary" onClick={() => handleSave("save")}>
+              Save for later
+            </button>
+            <button type="button" className="btn-primary" onClick={() => handleSave("start")}>
+              Start Draft
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn-secondary" onClick={() => navigate(backTo)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" onClick={() => handleSave("update")}>
+              Save Changes
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

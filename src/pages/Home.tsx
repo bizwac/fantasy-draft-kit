@@ -61,15 +61,18 @@ function DraftCard({ draft }: { draft: Draft }) {
   const total = draft.settings.teams * rosterSlotCount(draft.settings.rosterSlots);
   const picked = draft.picks.length;
   const [duplicatePrompt, setDuplicatePrompt] = useState(false);
+  // Nothing to ask about if the source never picked anything AND it's
+  // already a mock (no picks-vs-keep choice, no as-mock choice either
+  // since it already is one) — just clone it straight away, same as
+  // before this prompt existed.
+  const needsDuplicatePrompt = draft.picks.length > 0 || !draft.isMock;
 
   function handleDuplicate(e: MouseEvent) {
     e.preventDefault();
-    // Nothing to ask about if the source never picked anything — just
-    // clone it straight away, same as before this prompt existed.
-    if (draft.picks.length === 0) {
-      void duplicateDraft(draft.id);
-    } else {
+    if (needsDuplicatePrompt) {
       setDuplicatePrompt(true);
+    } else {
+      void duplicateDraft(draft.id);
     }
   }
 
@@ -128,8 +131,9 @@ function DraftCard({ draft }: { draft: Draft }) {
             <div className="flex flex-col gap-1">
               <h2 className="font-display text-lg font-semibold">Duplicate "{draft.name}"</h2>
               <p className="text-sm text-text-secondary">
-                Keep the {picked} pick{picked === 1 ? "" : "s"} already made, or start a new draft with the same teams
-                and settings but no picks?
+                {picked > 0
+                  ? `Keep the ${picked} pick${picked === 1 ? "" : "s"} already made, or start a new draft with the same teams and settings but no picks?`
+                  : "Start a new draft with the same teams and settings?"}
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -137,22 +141,36 @@ function DraftCard({ draft }: { draft: Draft }) {
                 type="button"
                 className="btn-primary"
                 onClick={() => {
-                  void duplicateDraft(draft.id, false);
+                  void duplicateDraft(draft.id);
                   setDuplicatePrompt(false);
                 }}
               >
                 Start Fresh (reset picks)
               </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  void duplicateDraft(draft.id, true);
-                  setDuplicatePrompt(false);
-                }}
-              >
-                Keep Picks
-              </button>
+              {picked > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    void duplicateDraft(draft.id, { keepPicks: true });
+                    setDuplicatePrompt(false);
+                  }}
+                >
+                  Keep Picks
+                </button>
+              )}
+              {!draft.isMock && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    void duplicateDraft(draft.id, { asMock: true });
+                    setDuplicatePrompt(false);
+                  }}
+                >
+                  Start as Mock Draft
+                </button>
+              )}
               <button type="button" className="text-sm text-text-secondary py-1" onClick={() => setDuplicatePrompt(false)}>
                 Cancel
               </button>

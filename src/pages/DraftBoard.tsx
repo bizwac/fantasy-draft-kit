@@ -286,6 +286,9 @@ export default function DraftBoard() {
           <button type="button" className="btn-secondary text-sm" onClick={() => setLogOpen(true)}>
             Draft Log
           </button>
+          <Link to={`/draft/${id}/setup`} className="btn-secondary text-sm">
+            Edit Settings
+          </Link>
           <Link to={`/draft/${id}/results`} className="btn-secondary text-sm">
             Results
           </Link>

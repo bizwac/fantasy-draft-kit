@@ -25,10 +25,14 @@ export async function createDraft(name: string, settings?: Partial<DraftSettings
 // snapshot to branch from) or, the more common case, carry over just
 // the teams/settings and start clean — the caller decides, since only
 // it knows whether the source draft actually has picks worth asking
-// about.
-export async function duplicateDraft(id: string, keepPicks = false): Promise<Draft | null> {
+// about. asMock flips the copy into a mock draft (every other team
+// auto-picks) while still cloning the real draft's teams/settings —
+// implies keepPicks: false, since a mock replaying picks that were
+// actually made by real people doesn't make sense.
+export async function duplicateDraft(id: string, options?: { keepPicks?: boolean; asMock?: boolean }): Promise<Draft | null> {
   const source = await db.drafts.get(id);
   if (!source) return null;
+  const keepPicks = options?.asMock ? false : (options?.keepPicks ?? false);
   const copy: Draft = {
     ...source,
     id: newId(),
@@ -36,7 +40,8 @@ export async function duplicateDraft(id: string, keepPicks = false): Promise<Dra
     createdAt: new Date().toISOString(),
     picks: keepPicks ? source.picks : [],
     status: keepPicks ? source.status : "setup",
-    timerRunning: false
+    timerRunning: false,
+    isMock: options?.asMock ? true : source.isMock
   };
   await db.drafts.add(copy);
   return copy;
