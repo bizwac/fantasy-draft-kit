@@ -1,7 +1,33 @@
 import type { PostDraftGrid as Grid } from "@/lib/postDraft";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 
-export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: Grid; teamNames: string[]; myTeamSlot: number }) {
+// Splits on the first space only, so a suffix ("Michael Pittman Jr.") or
+// a multi-word last name ("Amon-Ra St. Brown" → "Amon-Ra" / "St. Brown")
+// stays attached to the last-name line rather than getting its own line.
+function splitName(name: string): [string, string] {
+  const spaceIndex = name.indexOf(" ");
+  if (spaceIndex === -1) return [name, ""];
+  return [name.slice(0, spaceIndex), name.slice(spaceIndex + 1)];
+}
+
+export default function PostDraftGrid({
+  grid,
+  teamNames,
+  myTeamSlot,
+  presentation = false
+}: {
+  grid: Grid;
+  teamNames: string[];
+  myTeamSlot: number;
+  // Bigger player-name text with tightened cell padding/line-height, for
+  // the Live View (PresentBoard) only — that page's FitGrid then scales
+  // the whole table to fit the window, so trimming the padding keeps
+  // the grid's total height from growing much even though the name
+  // text itself is bigger. Without that trim, the extra height would
+  // just force a smaller fit-to-window scale factor and cancel the
+  // increase back out.
+  presentation?: boolean;
+}) {
   return (
     <div className="card overflow-x-auto print:overflow-visible">
       {/* table-fixed + an explicit width on only the Rd column makes the
@@ -46,24 +72,42 @@ export default function PostDraftGrid({ grid, teamNames, myTeamSlot }: { grid: G
                 <td
                   key={teamIdx}
                   className={[
-                    "px-2 py-2 border-b border-border align-top print:px-1 print:py-1",
+                    "px-2 border-b border-border align-top print:px-1 print:py-1",
+                    presentation ? "py-1" : "py-2",
                     teamIdx + 1 === myTeamSlot ? "bg-accent/10" : ""
                   ].join(" ")}
                 >
                   {cell.player ? (
-                    <div className="flex items-start gap-1.5">
-                      <div className="flex flex-col items-start gap-0.5 shrink-0">
+                    <div className={["flex items-start", presentation ? "gap-1" : "gap-1.5"].join(" ")}>
+                      <div className="flex flex-col items-start gap-0 shrink-0">
                         <span
-                          className="text-[10px] font-semibold px-1 rounded"
+                          className={["font-semibold px-1 rounded", presentation ? "text-xs" : "text-[10px]"].join(" ")}
                           style={{ backgroundColor: POSITION_COLOR[cell.player.position], color: POSITION_TEXT_COLOR[cell.player.position] }}
                         >
                           {cell.player.position}
                         </span>
                         <span className="text-[10px] text-text-secondary tabular-nums">#{cell.pick?.overall}</span>
                       </div>
-                      <span className="font-medium text-xs leading-tight whitespace-normal break-words line-clamp-2 min-w-0">
-                        {cell.player.name}
-                      </span>
+                      {presentation ? (
+                        // First and last name each get their own line and
+                        // truncate independently (a long first name never
+                        // steals room from the last name or vice versa),
+                        // with enough gap between them to use the cell's
+                        // full height rather than sitting tight together.
+                        (() => {
+                          const [first, last] = splitName(cell.player.name);
+                          return (
+                            <div className="flex flex-col min-w-0 flex-1 gap-1">
+                              <span className="font-medium text-base leading-tight truncate block">{first}</span>
+                              {last && <span className="font-medium text-base leading-tight truncate block">{last}</span>}
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <span className="font-medium whitespace-normal break-words line-clamp-2 min-w-0 text-xs leading-tight">
+                          {cell.player.name}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-text-secondary">—</span>

@@ -89,7 +89,13 @@ export default function PresentBoard() {
   const grid = buildPostDraftGrid(draft, playersById);
 
   return (
-    <div ref={containerRef} className="min-h-dvh bg-surface text-text-primary p-3 md:p-4 flex flex-col gap-2">
+    // h-dvh (not min-h-dvh) is load-bearing here: FitGrid needs its
+    // flex-1 outer wrapper to be genuinely height-CAPPED at the viewport,
+    // not just no-smaller-than it, or the page grows to fit the grid's
+    // natural size instead of the grid shrinking to fit the page — which
+    // silently defeated the whole fit-to-window scaling below once the
+    // grid got tall enough to exceed the viewport on its own.
+    <div ref={containerRef} className="h-dvh overflow-hidden bg-surface text-text-primary p-3 md:p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-text-secondary flex items-center gap-2 truncate">
@@ -135,7 +141,7 @@ export default function PresentBoard() {
       </div>
 
       <FitGrid>
-        <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} />
+        <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} presentation />
       </FitGrid>
     </div>
   );
