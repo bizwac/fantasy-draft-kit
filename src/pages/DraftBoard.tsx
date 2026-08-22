@@ -38,6 +38,15 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "myrank", label: "My Rank" }
 ];
 
+function ExternalLinkIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+      <path d="M9 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 4h6v6M20 4l-9 9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function rosterSlotsKey(slots: RosterSlots): string {
   return [slots.QB, slots.RB, slots.WR, slots.TE, slots.FLEX, slots.SUPERFLEX ?? 0, slots.K, slots.DST, slots.BENCH, slots.IR ?? 0].join(
     "|"
@@ -280,8 +289,16 @@ export default function DraftBoard() {
           <Link to={`/draft/${id}/results`} className="btn-secondary text-sm">
             Results
           </Link>
-          <Link to={`/draft/${id}/present`} target="_blank" rel="noopener" className="btn-secondary text-sm">
-            Live View ↗
+          <Link
+            to={`/draft/${id}/present`}
+            target="_blank"
+            rel="noopener"
+            className="btn-secondary text-sm px-2.5 sm:px-4"
+            aria-label="Live View (opens in a new tab)"
+            title="Live View"
+          >
+            <span className="hidden sm:inline">Live View</span>
+            <ExternalLinkIcon />
           </Link>
         </div>
       </div>
@@ -311,49 +328,50 @@ export default function DraftBoard() {
 
       <ScarcityMeter counts={scarcityCounts} />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2">
         <input
           type="search"
           placeholder="Search players…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch flex-1 min-w-[10rem]"
+          className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch w-full"
         />
-        {POSITIONS.map((pos) => (
-          <button
-            key={pos}
-            type="button"
-            onClick={() => setPosition(pos)}
-            className={[
-              "min-h-touch rounded-md px-3 text-sm font-medium transition-colors",
-              position === pos ? "bg-accent text-accent-ink" : "bg-surface-sunken text-text-primary"
-            ].join(" ")}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={position}
+            onChange={(e) => setPosition(e.target.value as Position | "ALL")}
+            className="select min-h-touch text-sm"
+            aria-label="Position filter"
           >
-            {pos}
-          </button>
-        ))}
-        <select
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value as SortKey)}
-          className="select min-h-touch text-sm"
-          aria-label="Sort by"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              Sort: {opt.label}
-            </option>
-          ))}
-        </select>
-        <FilterMenu
-          options={[
-            { key: "hideDrafted", label: "Hide drafted", checked: hideDrafted, onChange: setHideDrafted },
-            { key: "hideOutIR", label: "Hide Out/IR", checked: hideOutIR, onChange: setHideOutIR },
-            { key: "rookiesOnly", label: "Rookies only", checked: rookiesOnly, onChange: setRookiesOnly },
-            { key: "winningTeamOnly", label: "Winning teams only", checked: winningTeamOnly, onChange: setWinningTeamOnly },
-            { key: "favoritesOnly", label: "Favorites only", checked: favoritesOnly, onChange: setFavoritesOnly },
-            { key: "hideDoNotDraft", label: "Hide do-not-draft", checked: hideDoNotDraft, onChange: setHideDoNotDraft }
-          ]}
-        />
+            {POSITIONS.map((pos) => (
+              <option key={pos} value={pos}>
+                {pos === "ALL" ? "All positions" : pos}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="select min-h-touch text-sm"
+            aria-label="Sort by"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                Sort: {opt.label}
+              </option>
+            ))}
+          </select>
+          <FilterMenu
+            options={[
+              { key: "hideDrafted", label: "Hide drafted", checked: hideDrafted, onChange: setHideDrafted },
+              { key: "hideOutIR", label: "Hide Out/IR", checked: hideOutIR, onChange: setHideOutIR },
+              { key: "rookiesOnly", label: "Rookies only", checked: rookiesOnly, onChange: setRookiesOnly },
+              { key: "winningTeamOnly", label: "Winning teams only", checked: winningTeamOnly, onChange: setWinningTeamOnly },
+              { key: "favoritesOnly", label: "Favorites only", checked: favoritesOnly, onChange: setFavoritesOnly },
+              { key: "hideDoNotDraft", label: "Hide do-not-draft", checked: hideDoNotDraft, onChange: setHideDoNotDraft }
+            ]}
+          />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col">

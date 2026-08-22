@@ -45,6 +45,16 @@ registerSW({
   onRegisteredSW(_url, registration) {
     if (!registration) return;
     setInterval(() => void registration.update(), 60 * 60 * 1000);
+    // The hourly interval above is a JS timer, which iOS suspends while
+    // the installed PWA is backgrounded — so reopening a session that's
+    // been sitting for hours (or days) doesn't get a check until the
+    // next hour boundary fires, if it ever does before the user leaves
+    // again. Checking again the moment the tab regains focus catches
+    // exactly that case, so a plain "come back and refresh" reliably
+    // picks up a new deploy instead of depending on the timer's luck.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void registration.update();
+    });
   }
 });
 
