@@ -113,8 +113,8 @@ export default function PostDraftGrid({
                           const [first, last] = splitName(cell.player.name);
                           return (
                             <div className="flex flex-col min-w-0 flex-1 gap-1">
-                              <span className="font-medium text-base leading-tight truncate block">{first}</span>
-                              {last && <span className="font-medium text-base leading-tight truncate block">{last}</span>}
+                              <span className="font-medium text-sm leading-tight truncate block">{first}</span>
+                              {last && <span className="font-medium text-sm leading-tight truncate block">{last}</span>}
                             </div>
                           );
                         })()
