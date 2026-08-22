@@ -131,4 +131,10 @@
   main {
     padding: 0 !important;
   }
+  /* Overrides PostDraftGrid's inline minWidth (a screen-only legibility
+     floor) — an inline style attribute beats any class, print utility
+     variants included, so this has to live here instead. */
+  .post-draft-grid-table {
+    min-width: 0 !important;
+  }
 }
