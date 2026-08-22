@@ -30,11 +30,11 @@ export default function FilterMenu({ options }: { options: FilterOption[] }) {
   }, [open]);
 
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         ref={buttonRef}
         type="button"
-        className="btn-secondary text-sm min-h-touch flex items-center gap-1.5"
+        className="btn-secondary text-sm min-h-touch flex items-center gap-1.5 whitespace-nowrap px-3"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="true"

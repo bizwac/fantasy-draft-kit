@@ -336,11 +336,11 @@ export default function DraftBoard() {
           onChange={(e) => setSearch(e.target.value)}
           className="rounded-md bg-surface-sunken px-3 py-2 min-h-touch w-full"
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2">
           <select
             value={position}
             onChange={(e) => setPosition(e.target.value as Position | "ALL")}
-            className="select min-h-touch text-sm"
+            className="select min-h-touch text-sm flex-1 min-w-0"
             aria-label="Position filter"
           >
             {POSITIONS.map((pos) => (
@@ -352,7 +352,7 @@ export default function DraftBoard() {
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="select min-h-touch text-sm"
+            className="select min-h-touch text-sm flex-1 min-w-0"
             aria-label="Sort by"
           >
             {SORT_OPTIONS.map((opt) => (
