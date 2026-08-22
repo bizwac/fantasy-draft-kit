@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ThemePreference } from "@/lib/useTheme";
 import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -62,10 +62,13 @@ export default function PresentBoard() {
   // pickable as a single window in a share picker or hides the sharer's
   // own meeting controls. A popup opened with toolbar/location/menubar
   // disabled renders as its own chrome-free, non-fullscreen window that
-  // a "share a window" picker sees like any other app window.
+  // a "share a window" picker sees like any other app window. Sized off
+  // the actual screen (not a fixed 1280x800) so a 14-16 round grid has
+  // as much room as the laptop can give it before FitGrid below has to
+  // scale it down to stay fully visible.
   function openPresentationWindow() {
-    const width = 1280;
-    const height = 800;
+    const width = Math.min(1600, Math.round(window.screen.availWidth * 0.92));
+    const height = Math.min(1000, Math.round(window.screen.availHeight * 0.92));
     const left = Math.max(0, Math.round((window.screen.width - width) / 2));
     const top = Math.max(0, Math.round((window.screen.height - height) / 2));
     window.open(
@@ -131,8 +134,50 @@ export default function PresentBoard() {
         />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto">
+      <FitGrid>
         <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} />
+      </FitGrid>
+    </div>
+  );
+}
+
+// Screen-sharing to a meeting is a fire-and-forget view — nobody on the
+// other end can scroll it, so a 14-16 round grid needs to shrink to fit
+// the window rather than clip. Measures the grid at its natural
+// (unscaled) size, then scales it down just enough to fit both
+// dimensions of the space actually available; never scales up past 1
+// (a short draft with few teams just stays at its natural size,
+// top-left in the space, rather than being blown up to fill it).
+function FitGrid({ children }: { children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    function recompute() {
+      if (!outer || !inner) return;
+      const contentWidth = inner.scrollWidth;
+      const contentHeight = inner.scrollHeight;
+      if (contentWidth === 0 || contentHeight === 0) return;
+      const next = Math.min(1, outer.clientWidth / contentWidth, outer.clientHeight / contentHeight);
+      setScale(Number.isFinite(next) && next > 0 ? next : 1);
+    }
+
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(outer);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [children]);
+
+  return (
+    <div ref={outerRef} className="flex-1 min-h-0 overflow-hidden flex justify-center">
+      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
+        {children}
       </div>
     </div>
   );

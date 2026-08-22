@@ -115,6 +115,14 @@
   }
 }
 
+/* Chrome/Edge pre-select this orientation in the print dialog (Firefox/
+   Safari still default to portrait, requiring a manual toggle there) —
+   the draft results grid is far wider than it is tall, so landscape is
+   what actually fits every team's column on one page. */
+@page {
+  size: landscape;
+}
+
 @media print {
   * {
     -webkit-print-color-adjust: exact;

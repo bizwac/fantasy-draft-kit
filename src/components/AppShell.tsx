@@ -32,7 +32,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="h-dvh flex flex-col md:flex-row overflow-hidden">
+    <div className="h-dvh flex flex-col md:flex-row overflow-hidden print:h-auto print:overflow-visible print:block">
       <header className="md:hidden flex items-center justify-between px-4 py-2 border-b border-border print:hidden">
         <button
           type="button"
@@ -129,7 +129,7 @@ export default function AppShell() {
       </nav>
 
       <main
-        className="flex-1 min-w-0 overflow-y-auto bg-surface px-4 md:px-8"
+        className="flex-1 min-w-0 overflow-y-auto bg-surface px-4 md:px-8 print:h-auto print:overflow-visible print:block print:px-0"
         style={{
           // No padding-top here on purpose, despite the horizontal/bottom
           // padding right above — padding on a scroll container only
