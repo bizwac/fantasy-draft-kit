@@ -1,5 +1,6 @@
 import type { RosterState } from "@/lib/rosterTracker";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
+import { safeAreaPadding } from "@/lib/safeArea";
 
 const CATEGORY_LABEL: Record<string, string> = {
   QB: "QB", RB: "RB", WR: "WR", TE: "TE", K: "K", DST: "DST",
@@ -10,7 +11,8 @@ export default function RosterPanel({ roster, onClose }: { roster: RosterState; 
   return (
     <div className="fixed inset-0 z-30 flex justify-end bg-black/40" onClick={onClose} role="presentation">
       <div
-        className="card h-full w-full sm:w-[380px] rounded-none sm:rounded-l-lg p-5 flex flex-col gap-4 overflow-hidden"
+        className="card h-full w-full sm:w-[380px] rounded-none sm:rounded-l-lg flex flex-col gap-4 overflow-hidden"
+        style={safeAreaPadding(1.25)}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Player } from "@/lib/types";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
+import { safeAreaPadding } from "@/lib/safeArea";
 
 export default function ConfirmDraftSheet({
   player,
@@ -19,7 +20,8 @@ export default function ConfirmDraftSheet({
 
   return (
     <div
-      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40"
+      style={safeAreaPadding(1)}
       onClick={onCancel}
       role="presentation"
     >

@@ -4,6 +4,14 @@ import { fetchSleeperPlayers, fetchTrendingAddCounts } from "./sleeper";
 import { fetchAdp } from "./ffcalc";
 import { normalizeName, normalizeTeam, playerMatchKey } from "./normalize";
 
+// Positions where FFC's spelling differs from Sleeper's (our canonical
+// set) even though the player names themselves match directly. DST isn't
+// here — its names don't match at all, so it's handled separately via
+// dstByTeam below.
+const FFC_POSITION_MAP: Record<string, Player["position"]> = {
+  PK: "K"
+};
+
 export interface SourceOutcome {
   ok: boolean;
   count: number | null;
@@ -114,12 +122,19 @@ export async function refreshPlayerData(settings: {
 
     ranked.forEach((entry, index) => {
       const isDst = entry.position === "DEF";
-      const playerId = isDst ? dstByTeam.get(normalizeTeam(entry.team)) : matchIndex.get(playerMatchKey(entry.name, entry.position));
+      // FFC spells some positions differently than Sleeper (our canonical
+      // set) even though the player names themselves match fine — kickers
+      // are "PK" there, "K" here. Same mismatch class as DST below, just
+      // fixable by translating the position instead of matching by team.
+      const canonicalPosition = FFC_POSITION_MAP[entry.position] ?? entry.position;
+      const playerId = isDst
+        ? dstByTeam.get(normalizeTeam(entry.team))
+        : matchIndex.get(playerMatchKey(entry.name, canonicalPosition));
       if (!playerId) return;
       const player = players.get(playerId);
       if (!player) return;
 
-      const posKey = isDst ? "DST" : entry.position;
+      const posKey = isDst ? "DST" : canonicalPosition;
       const posCount = (positionCounters.get(posKey) ?? 0) + 1;
       positionCounters.set(posKey, posCount);
 

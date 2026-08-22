@@ -125,31 +125,40 @@ export default function PlayerRow({
   return (
     <div
       className={[
-        "w-full flex items-center min-h-touch border-b border-border transition-colors",
+        "group flex items-stretch h-full border-b border-border transition-colors w-max",
         drafted || doNotDraft ? "opacity-40" : "hover:bg-surface-sunken active:bg-surface-sunken"
       ].join(" ")}
     >
-      <button
-        type="button"
-        disabled={drafted}
-        onClick={onSelect}
-        className="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-2 sm:px-4 min-h-touch text-left overflow-hidden"
-      >
-        <span
-          className="text-xs font-semibold w-8 sm:w-9 shrink-0 text-center rounded px-1 py-0.5"
-          style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
-        >
-          {player.position}
-        </span>
-        <span className={["flex-1 min-w-0 truncate font-medium", drafted ? "line-through" : ""].join(" ")}>
-          {player.name}
-        </span>
-        {doNotDraft && (
-          <span className="shrink-0 text-danger" title="Do not draft" aria-label="Do not draft">
-            <BanIcon />
+      <button type="button" disabled={drafted} onClick={onSelect} className="flex items-stretch shrink-0 text-left">
+        {/* Pinned during horizontal scroll (position:sticky), so Pos + Player
+            stay visible no matter which stat columns are scrolled into view.
+            Needs its own opaque background — group-hover here mirrors the
+            row's own hover tint, since a sticky child paints over whatever
+            the row wrapper would otherwise show through it. */}
+        <span className="sticky left-0 z-10 flex items-center gap-2 sm:gap-3 shrink-0 px-2 sm:px-4 bg-surface-raised group-hover:bg-surface-sunken">
+          <span
+            className="text-xs font-semibold w-8 sm:w-9 shrink-0 text-center rounded px-1 py-0.5"
+            style={{ backgroundColor: POSITION_COLOR[player.position], color: POSITION_TEXT_COLOR[player.position] }}
+          >
+            {player.position}
           </span>
-        )}
-        {columns.map((key) => renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue, lastSeasonPts }))}
+          <span
+            className={[
+              "w-28 sm:w-36 shrink-0 font-medium leading-tight whitespace-normal break-words line-clamp-2",
+              drafted ? "line-through" : ""
+            ].join(" ")}
+          >
+            {player.name}
+          </span>
+          {doNotDraft && (
+            <span className="shrink-0 text-danger" title="Do not draft" aria-label="Do not draft">
+              <BanIcon />
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-2 sm:gap-3 pr-2 sm:pr-4">
+          {columns.map((key) => renderCell(key, { player, drafted, draftedByLabel, tier, auctionValue, lastSeasonPts }))}
+        </span>
       </button>
       <button
         type="button"

@@ -6,6 +6,7 @@ import { depthChartLabel } from "@/lib/handcuff";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
 import { huddleNewsUrl } from "@/lib/dataSources/huddlePlayers";
 import { normalizeName } from "@/lib/dataSources/normalize";
+import { safeAreaPadding } from "@/lib/safeArea";
 import Badge from "./Badge";
 
 function pointsForFormat(line: SeasonStatLine, scoring: ScoringFormat): number | null {
@@ -93,7 +94,8 @@ export default function PlayerDetailCard({
 
   return (
     <div
-      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 p-4 overscroll-contain"
+      className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40 overscroll-contain"
+      style={safeAreaPadding(1)}
       onClick={onClose}
       role="presentation"
     >
@@ -244,7 +246,8 @@ export default function PlayerDetailCard({
 
       {newsOpen && huddleEntry && (
         <div
-          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-4 overscroll-contain"
+          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 overscroll-contain"
+          style={safeAreaPadding(1)}
           onClick={(e) => {
             e.stopPropagation();
             setNewsOpen(false);

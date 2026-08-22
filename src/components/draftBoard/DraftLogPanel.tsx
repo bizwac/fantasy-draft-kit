@@ -1,5 +1,6 @@
 import type { Pick, Player } from "@/lib/types";
 import { POSITION_COLOR, POSITION_TEXT_COLOR } from "@/lib/positionColors";
+import { safeAreaPadding } from "@/lib/safeArea";
 
 export default function DraftLogPanel({
   picks,
@@ -23,7 +24,8 @@ export default function DraftLogPanel({
   return (
     <div className="fixed inset-0 z-30 flex justify-end bg-black/40" onClick={onClose} role="presentation">
       <div
-        className="card h-full w-full sm:w-[420px] rounded-none sm:rounded-l-lg p-5 flex flex-col gap-4 overflow-hidden"
+        className="card h-full w-full sm:w-[420px] rounded-none sm:rounded-l-lg flex flex-col gap-4 overflow-hidden"
+        style={safeAreaPadding(1.25)}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
