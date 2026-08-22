@@ -20,16 +20,21 @@ export default function PostDraftGrid({
   teamNames: string[];
   myTeamSlot: number;
   // Bigger player-name text with tightened cell padding/line-height, for
-  // the Live View (PresentBoard) only — that page's FitGrid then scales
-  // the whole table to fit the window, so trimming the padding keeps
-  // the grid's total height from growing much even though the name
-  // text itself is bigger. Without that trim, the extra height would
-  // just force a smaller fit-to-window scale factor and cancel the
-  // increase back out.
+  // the Live View (PresentBoard) only, which scrolls this grid inside a
+  // fixed-height section rather than shrinking it to fit.
   presentation?: boolean;
 }) {
   return (
-    <div className="card overflow-x-auto print:overflow-visible">
+    // presentation mode skips its own overflow-x-auto: PresentBoard's
+    // wrapper already provides one shared scroll container for both
+    // axes, and nesting a second overflow-x-auto div inside it would
+    // itself become the nearest "scroll container" that position:sticky
+    // resolves against (CSS quietly forces overflow-y to auto once
+    // overflow-x isn't visible) — since that inner div is never itself
+    // height-constrained, nothing would ever actually need to "stick"
+    // relative to it, silently breaking the sticky header/round column
+    // during real vertical scroll.
+    <div className={["card print:overflow-visible", presentation ? "" : "overflow-x-auto"].join(" ")}>
       {/* table-fixed + an explicit width on only the Rd column makes the
           browser split the remaining width evenly across every team
           column, whatever the team count — no per-column width math
@@ -46,16 +51,26 @@ export default function PostDraftGrid({
       >
         <thead>
           <tr>
-            <th className="sticky left-0 w-10 bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:px-1 print:py-1">
+            {/* z-30 (above the header row's z-20 and the body's sticky-left
+                z-10) since this corner is sticky on both axes at once and
+                has to stay on top regardless of scroll direction. */}
+            <th className="sticky left-0 top-0 z-30 w-10 bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:px-1 print:py-1">
               Rd
             </th>
             {teamNames.map((name, i) => (
               <th
                 key={i}
-                className={[
-                  "px-2 py-2.5 text-left text-sm font-bold border-b border-border whitespace-normal break-words print:px-1 print:py-1",
-                  i + 1 === myTeamSlot ? "bg-accent/20 text-accent-strong" : "text-text-primary"
-                ].join(" ")}
+                className="sticky top-0 z-20 px-2 py-2.5 text-left text-sm font-bold border-b border-border whitespace-normal break-words print:static print:px-1 print:py-1 text-text-primary"
+                // A plain bg-accent/20 utility is semi-transparent, which
+                // is fine for a static header but bleeds scrolled-past
+                // rows through once it's sticky — color-mix here
+                // pre-composites the same tint against the opaque card
+                // background instead, so it stays solid while stuck.
+                style={
+                  i + 1 === myTeamSlot
+                    ? { backgroundColor: "color-mix(in srgb, var(--accent) 20%, var(--surface-raised))", color: "var(--accent-strong)" }
+                    : { backgroundColor: "var(--surface-raised)" }
+                }
               >
                 {name}
               </th>
@@ -65,7 +80,7 @@ export default function PostDraftGrid({
         <tbody>
           {grid.grid.map((row, roundIdx) => (
             <tr key={roundIdx}>
-              <td className="sticky left-0 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1">
+              <td className="sticky left-0 z-10 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1">
                 {roundIdx + 1}
               </td>
               {row.map((cell, teamIdx) => (
