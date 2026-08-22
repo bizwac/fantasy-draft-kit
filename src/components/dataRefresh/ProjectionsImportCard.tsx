@@ -104,8 +104,22 @@ export default function ProjectionsImportCard({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <ColumnSelect label="Player name (required)" headers={headers} value={mapping.name} onChange={(v) => setMapping((m) => ({ ...m, name: v }))} />
             <ColumnSelect label="Projected points" headers={headers} value={mapping.projPoints} onChange={(v) => setMapping((m) => ({ ...m, projPoints: v }))} allowNone />
-            <ColumnSelect label="Team" headers={headers} value={mapping.team} onChange={(v) => setMapping((m) => ({ ...m, team: v }))} allowNone />
-            <ColumnSelect label="Position" headers={headers} value={mapping.position} onChange={(v) => setMapping((m) => ({ ...m, position: v }))} allowNone />
+            <ColumnSelect
+              label="Team"
+              headers={headers}
+              value={mapping.team}
+              onChange={(v) => setMapping((m) => ({ ...m, team: v }))}
+              allowNone
+              hint="Map this (or Position) to tell same-name players on different teams apart"
+            />
+            <ColumnSelect
+              label="Position"
+              headers={headers}
+              value={mapping.position}
+              onChange={(v) => setMapping((m) => ({ ...m, position: v }))}
+              allowNone
+              hint="Map this (or Team) to tell same-name players apart"
+            />
             <ColumnSelect label="Contract year" headers={headers} value={mapping.contractYear} onChange={(v) => setMapping((m) => ({ ...m, contractYear: v }))} allowNone />
             <ColumnSelect
               label="Team won last year (2025)"
@@ -155,13 +169,15 @@ function ColumnSelect({
   headers,
   value,
   onChange,
-  allowNone
+  allowNone,
+  hint
 }: {
   label: string;
   headers: string[];
   value: string | undefined;
   onChange: (v: string | undefined) => void;
   allowNone?: boolean;
+  hint?: string;
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -178,6 +194,7 @@ function ColumnSelect({
           </option>
         ))}
       </select>
+      {hint && <span className="text-[11px] text-text-secondary">{hint}</span>}
     </label>
   );
 }

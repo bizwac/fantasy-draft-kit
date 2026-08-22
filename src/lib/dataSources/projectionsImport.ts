@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import type { Player } from "@/lib/types";
-import { normalizeName, playerMatchKey } from "./normalize";
+import { normalizeName, normalizeTeam, playerMatchKey } from "./normalize";
 import type { MappedProjectionRow } from "./csvImport";
 
 export interface ProjectionImportSummary {
@@ -8,17 +8,38 @@ export interface ProjectionImportSummary {
   unmatched: string[];
 }
 
-// Applies imported projections/contract-year data onto the already-cached
-// `players` table. Runs entirely offline — no network — and only touches
-// the fields the CSV actually mapped, so it can never wipe Sleeper/ADP
-// data (spec §4.26, §7b.2).
-export async function applyProjectionImport(rows: MappedProjectionRow[]): Promise<ProjectionImportSummary> {
-  const allPlayers = await db.players.toArray();
+function nameTeamKey(name: string, team: string): string {
+  return `${normalizeName(name)}|${normalizeTeam(team)}`;
+}
 
+function nameTeamPositionKey(name: string, team: string, position: string): string {
+  return `${normalizeName(name)}|${normalizeTeam(team)}|${position}`;
+}
+
+// Pure matching + field-merge step (same rationale as pickRepo.ts's
+// apply* functions — the highest-risk logic here, matching an arbitrary
+// CSV row onto the right local player, is unit-testable without a
+// Dexie/IndexedDB environment this way). Only touches the fields the
+// CSV actually mapped, so it can never wipe Sleeper/ADP data (spec
+// §4.26, §7b.2) — and never writes row.team/row.position/row.name back
+// onto the matched player; those exist only to *find* the right record.
+export function matchProjectionRows(rows: MappedProjectionRow[], allPlayers: Player[]): { updates: Player[]; unmatched: string[] } {
+  // Two players sharing a first+last name across different teams (or
+  // positions) is common enough — a name-only match would silently pick
+  // one of them, or the earlier all-players-must-be-unique behavior
+  // would just refuse to match either. Team and position are only ever
+  // used to *find* the right player here, in whichever combination the
+  // CSV actually mapped (most specific first) — see the field-by-field
+  // update below, which never writes row.team/row.position back onto
+  // the matched player.
+  const byNameTeamPosition = new Map<string, Player>();
   const byNameAndPosition = new Map<string, Player>();
+  const byNameAndTeam = new Map<string, Player>();
   const byNameOnly = new Map<string, Player[]>();
   for (const p of allPlayers) {
+    byNameTeamPosition.set(nameTeamPositionKey(p.name, p.team, p.position), p);
     byNameAndPosition.set(playerMatchKey(p.name, p.position), p);
+    byNameAndTeam.set(nameTeamKey(p.name, p.team), p);
     const nameKey = normalizeName(p.name);
     const list = byNameOnly.get(nameKey) ?? [];
     list.push(p);
@@ -30,10 +51,18 @@ export async function applyProjectionImport(rows: MappedProjectionRow[]): Promis
 
   for (const row of rows) {
     let target: Player | undefined;
-    if (row.position) {
+    if (row.team && row.position) {
+      target = byNameTeamPosition.get(nameTeamPositionKey(row.name, row.team, row.position));
+    }
+    if (!target && row.position) {
       target = byNameAndPosition.get(playerMatchKey(row.name, row.position));
     }
+    if (!target && row.team) {
+      target = byNameAndTeam.get(nameTeamKey(row.name, row.team));
+    }
     if (!target) {
+      // No team/position mapped (or neither narrowed it down) — only
+      // safe when the name alone is unambiguous in the local dataset.
       const candidates = byNameOnly.get(normalizeName(row.name));
       if (candidates?.length === 1) target = candidates[0];
     }
@@ -69,6 +98,13 @@ export async function applyProjectionImport(rows: MappedProjectionRow[]): Promis
     }
     updates.push(updated);
   }
+
+  return { updates, unmatched };
+}
+
+export async function applyProjectionImport(rows: MappedProjectionRow[]): Promise<ProjectionImportSummary> {
+  const allPlayers = await db.players.toArray();
+  const { updates, unmatched } = matchProjectionRows(rows, allPlayers);
 
   if (updates.length > 0) {
     await db.players.bulkPut(updates);
