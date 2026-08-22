@@ -268,8 +268,10 @@ export default function Settings() {
         <div>
           <h2 className="font-display font-semibold">Cloud Backup</h2>
           <p className="text-sm text-text-secondary">
-            Drafts, personal rankings, and these preferences back up to the cloud automatically so a Live View on
-            another device stays current. Use these for a manual push, or to pull down a backup on a new device.
+            Drafts, personal rankings, these preferences, and the player pool itself (ADP, injuries, projections,
+            season stats, news links) all back up to the cloud automatically — a refresh or CSV import on one device
+            reaches every other device the next time it's opened, and a Live View elsewhere stays current. Use these
+            for a manual push, or to pull down a backup on a new device.
           </p>
         </div>
         <CloudSyncPanel />

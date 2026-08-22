@@ -5,13 +5,26 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { requestPersistentStorage } from "./lib/persistence";
 import { autoPullIfLocalEmpty, installCloudSyncHooks } from "./lib/cloudSync";
+import { installPlayerDataCloudSyncHooks, pullPlayerDataIfCloudIsNewer } from "./lib/dataSources/playerDataCloudSync";
 import { startAutoRefreshWatch } from "./lib/dataSources/autoRefresh";
 import "./styles/index.css";
 
 void requestPersistentStorage();
 installCloudSyncHooks();
+installPlayerDataCloudSyncHooks();
 void autoPullIfLocalEmpty();
-startAutoRefreshWatch();
+
+// Try the cloud copy of the player pool (ADP, injuries, projections,
+// season stats, news links) before falling back to autoRefreshWatch's
+// own 24h-staleness clock — a device that's never refreshed, or whose
+// data is older than another device's, gets caught up from the cloud
+// instead of re-fetching from Sleeper/FFC from scratch. Awaited ahead
+// of startAutoRefreshWatch so a successful pull's updated staleness
+// timestamps are what that check actually sees.
+void (async () => {
+  await pullPlayerDataIfCloudIsNewer();
+  startAutoRefreshWatch();
+})();
 
 // registerType "autoUpdate" only controls what the service worker does
 // once the browser decides to check for one — and the browser's own

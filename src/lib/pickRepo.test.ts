@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { applyAddPick, applyCorrectPick, applyDeletePick, applyUndoLastPick } from "./pickRepo";
-import { locationForOverallPick } from "./draftMath";
-import type { Pick } from "./types";
+import { applyAddPick, applyCorrectPick, applyDeletePick, applyUndoLastPick, chooseCpuPick } from "./pickRepo";
+import { locationForOverallPick, rosterSlotCount } from "./draftMath";
+import type { Pick, Player, RosterSlots } from "./types";
 
 // Deterministic PRNG (mulberry32) so a failure is reproducible from the
 // printed seed rather than flaking on Math.random().
@@ -87,5 +87,113 @@ describe("applyDeletePick", () => {
     expect(afterDelete[0].corrected).toBe(false);
     // p3 shifted from overall 3 -> 2, so it's flagged corrected
     expect(afterDelete[1].corrected).toBe(true);
+  });
+});
+
+function makeCpuTestPlayer(id: string, position: Player["position"], adp: number): Player {
+  return {
+    id,
+    name: id,
+    team: "FA",
+    position,
+    byeWeek: null,
+    injuryStatus: null,
+    isRookie: false,
+    contractYear: null,
+    teamWinningRecordLastYear: null,
+    teamProjectedWinning: null,
+    winningTeam: null,
+    depthChartOrder: null,
+    depthChartPos: null,
+    handcuffOfPlayerId: null,
+    adp,
+    adpStdDev: null,
+    projPoints: null,
+    positionRank: null,
+    overallRank: null,
+    tier: null,
+    vorp: null,
+    auctionValue: null,
+    sosSeason: null,
+    sosPlayoffs: null,
+    usage: null,
+    trendingAddCount: null,
+    lastUpdated: new Date().toISOString()
+  };
+}
+
+// RB/WR cheap and plentiful early (like a real board), QB/TE spread
+// through the middle, K/DST deliberately pushed to the very end of the
+// ADP order — exactly the shape that would starve a pure best-ADP bot
+// of a kicker/defense (or a second starting position) if the
+// needs-forcing in chooseCpuPick didn't kick in.
+function buildCpuTestPool(): Player[] {
+  const players: Player[] = [];
+  let id = 0;
+  const push = (position: Player["position"], count: number, startAdp: number, step: number) => {
+    for (let i = 0; i < count; i++) {
+      id++;
+      players.push(makeCpuTestPlayer(`p${id}`, position, startAdp + i * step));
+    }
+  };
+  push("RB", 60, 1, 3);
+  push("WR", 60, 2, 3);
+  push("QB", 20, 10, 8);
+  push("TE", 20, 20, 9);
+  push("DST", 10, 140, 5);
+  push("K", 10, 160, 5);
+  return players;
+}
+
+describe("chooseCpuPick", () => {
+  const teams = 8;
+  const rosterSlots: RosterSlots = { QB: 1, RB: 2, WR: 2, TE: 1, FLEX: 1, K: 1, DST: 1, BENCH: 6 };
+  const totalRounds = rosterSlotCount(rosterSlots);
+
+  it("fills every team's dedicated roster needs and never exceeds position caps, across many seeds", () => {
+    const pool = buildCpuTestPool();
+
+    for (let seed = 0; seed < 20; seed++) {
+      const rng = mulberry32(seed);
+      let picks: Pick[] = [];
+      for (let overall = 1; overall <= teams * totalRounds; overall++) {
+        const loc = locationForOverallPick(overall, teams);
+        const draftedIds = new Set(picks.map((p) => p.playerId));
+        const teamPicks = picks.filter((p) => p.teamSlot === loc.teamSlot);
+        const chosen = chooseCpuPick(pool, draftedIds, teamPicks, rosterSlots, totalRounds, rng);
+        expect(chosen).not.toBeNull();
+        picks = applyAddPick(picks, chosen!.id, loc.teamSlot, teams);
+      }
+
+      const playerIds = picks.map((p) => p.playerId);
+      expect(new Set(playerIds).size).toBe(playerIds.length); // no player drafted twice
+
+      const playersById = new Map(pool.map((p) => [p.id, p]));
+      for (let teamSlot = 1; teamSlot <= teams; teamSlot++) {
+        const teamPicks = picks.filter((p) => p.teamSlot === teamSlot);
+        const counts: Record<Player["position"], number> = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+        for (const pick of teamPicks) counts[playersById.get(pick.playerId)!.position]++;
+
+        expect(counts.QB).toBeGreaterThanOrEqual(rosterSlots.QB);
+        expect(counts.RB).toBeGreaterThanOrEqual(rosterSlots.RB);
+        expect(counts.WR).toBeGreaterThanOrEqual(rosterSlots.WR);
+        expect(counts.TE).toBeGreaterThanOrEqual(rosterSlots.TE);
+        expect(counts.K).toBe(1); // exactly one kicker, never more
+        expect(counts.DST).toBe(1); // exactly one defense, never more
+        expect(counts.QB).toBeLessThanOrEqual(2);
+        expect(counts.TE).toBeLessThanOrEqual(2);
+      }
+    }
+  });
+
+  it("introduces some randomness instead of always taking the literal best-ADP player", () => {
+    const pool = buildCpuTestPool();
+    const firstPicks = new Set<string>();
+    for (let seed = 0; seed < 30; seed++) {
+      const rng = mulberry32(seed * 97 + 3);
+      const chosen = chooseCpuPick(pool, new Set(), [], rosterSlots, totalRounds, rng);
+      firstPicks.add(chosen!.id);
+    }
+    expect(firstPicks.size).toBeGreaterThan(1);
   });
 });

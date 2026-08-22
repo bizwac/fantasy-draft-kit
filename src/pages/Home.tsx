@@ -1,9 +1,11 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { useState } from "react";
 import type { MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { db } from "@/lib/db";
 import { createDraft, deleteDraft, duplicateDraft } from "@/lib/draftRepo";
 import { rosterSlotCount } from "@/lib/draftMath";
+import { safeAreaPadding } from "@/lib/safeArea";
 import type { Draft } from "@/lib/types";
 import Badge from "@/components/player/Badge";
 import PageHeader from "@/components/shared/PageHeader";
@@ -58,10 +60,17 @@ export default function Home() {
 function DraftCard({ draft }: { draft: Draft }) {
   const total = draft.settings.teams * rosterSlotCount(draft.settings.rosterSlots);
   const picked = draft.picks.length;
+  const [duplicatePrompt, setDuplicatePrompt] = useState(false);
 
-  async function handleDuplicate(e: MouseEvent) {
+  function handleDuplicate(e: MouseEvent) {
     e.preventDefault();
-    await duplicateDraft(draft.id);
+    // Nothing to ask about if the source never picked anything — just
+    // clone it straight away, same as before this prompt existed.
+    if (draft.picks.length === 0) {
+      void duplicateDraft(draft.id);
+    } else {
+      setDuplicatePrompt(true);
+    }
   }
 
   async function handleDelete(e: MouseEvent) {
@@ -101,6 +110,56 @@ function DraftCard({ draft }: { draft: Draft }) {
           </button>
         </div>
       </Link>
+
+      {duplicatePrompt && (
+        <div
+          className="fixed inset-0 z-30 flex items-end sm:items-center justify-center bg-black/40"
+          style={safeAreaPadding(1)}
+          onClick={() => setDuplicatePrompt(false)}
+          role="presentation"
+        >
+          <div
+            className="card w-full sm:max-w-sm p-5 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Duplicate draft"
+          >
+            <div className="flex flex-col gap-1">
+              <h2 className="font-display text-lg font-semibold">Duplicate "{draft.name}"</h2>
+              <p className="text-sm text-text-secondary">
+                Keep the {picked} pick{picked === 1 ? "" : "s"} already made, or start a new draft with the same teams
+                and settings but no picks?
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  void duplicateDraft(draft.id, false);
+                  setDuplicatePrompt(false);
+                }}
+              >
+                Start Fresh (reset picks)
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  void duplicateDraft(draft.id, true);
+                  setDuplicatePrompt(false);
+                }}
+              >
+                Keep Picks
+              </button>
+              <button type="button" className="text-sm text-text-secondary py-1" onClick={() => setDuplicatePrompt(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </li>
   );
 }

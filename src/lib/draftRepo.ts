@@ -21,7 +21,12 @@ export async function createDraft(name: string, settings?: Partial<DraftSettings
   return draft;
 }
 
-export async function duplicateDraft(id: string): Promise<Draft | null> {
+// keepPicks lets a duplicate either clone the picks/status as-is (a
+// snapshot to branch from) or, the more common case, carry over just
+// the teams/settings and start clean — the caller decides, since only
+// it knows whether the source draft actually has picks worth asking
+// about.
+export async function duplicateDraft(id: string, keepPicks = false): Promise<Draft | null> {
   const source = await db.drafts.get(id);
   if (!source) return null;
   const copy: Draft = {
@@ -29,8 +34,8 @@ export async function duplicateDraft(id: string): Promise<Draft | null> {
     id: newId(),
     name: `${source.name} (copy)`,
     createdAt: new Date().toISOString(),
-    picks: [],
-    status: "setup",
+    picks: keepPicks ? source.picks : [],
+    status: keepPicks ? source.status : "setup",
     timerRunning: false
   };
   await db.drafts.add(copy);

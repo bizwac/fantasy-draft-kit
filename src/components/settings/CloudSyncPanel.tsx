@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { getCloudSyncState, pullBackupFromCloud, pushBackupToCloud, type CloudSyncState } from "@/lib/cloudSync";
+import {
+  getPlayerDataCloudState,
+  pullPlayerDataFromCloud,
+  pushPlayerDataToCloud,
+  type PlayerDataCloudState
+} from "@/lib/dataSources/playerDataCloudSync";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
 
 function timeAgo(iso: string | null): string {
@@ -18,6 +24,10 @@ export default function CloudSyncPanel() {
   const [state, setState] = useState<CloudSyncState>(() => getCloudSyncState());
   const [busy, setBusy] = useState<"push" | "pull" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const [playerDataState, setPlayerDataState] = useState<PlayerDataCloudState>(() => getPlayerDataCloudState());
+  const [playerDataBusy, setPlayerDataBusy] = useState<"push" | "pull" | null>(null);
+  const [playerDataMessage, setPlayerDataMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => setState((e as CustomEvent<CloudSyncState>).detail);
@@ -48,25 +58,86 @@ export default function CloudSyncPanel() {
     setBusy(null);
   }
 
+  async function handlePlayerDataPush() {
+    setPlayerDataBusy("push");
+    setPlayerDataMessage(null);
+    const result = await pushPlayerDataToCloud();
+    setPlayerDataMessage(result.ok ? "Player data pushed." : `Couldn't push: ${result.error}`);
+    setPlayerDataState(getPlayerDataCloudState());
+    setPlayerDataBusy(null);
+  }
+
+  async function handlePlayerDataPull() {
+    if (
+      !confirm(
+        "Pull the cloud copy of the player pool (ADP, injuries, projections, season stats, news links)? This replaces the local copy of that data — it doesn't touch your drafts or personal rankings."
+      )
+    ) {
+      return;
+    }
+    setPlayerDataBusy("pull");
+    setPlayerDataMessage(null);
+    const result = await pullPlayerDataFromCloud();
+    setPlayerDataMessage(result.ok ? "Player data restored from cloud." : `Couldn't restore: ${result.error}`);
+    setPlayerDataState(getPlayerDataCloudState());
+    setPlayerDataBusy(null);
+  }
+
   return (
-    <div className="card p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-      <div className="flex flex-col gap-0.5">
-        <span className="font-medium">
-          Cloud backup{" "}
-          <span className="text-text-secondary font-normal">
-            · {online ? `last pushed ${timeAgo(state.lastPushedAt)}` : "offline — will sync when reconnected"}
+    <div className="flex flex-col gap-3">
+      <div className="card p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">
+            Drafts &amp; personal rankings{" "}
+            <span className="text-text-secondary font-normal">
+              · {online ? `last pushed ${timeAgo(state.lastPushedAt)}` : "offline — will sync when reconnected"}
+            </span>
           </span>
-        </span>
-        {message && <span className="text-xs text-text-secondary">{message}</span>}
-        {state.lastError && !message && <span className="text-xs text-danger">Last error: {state.lastError}</span>}
+          {message && <span className="text-xs text-text-secondary">{message}</span>}
+          {state.lastError && !message && <span className="text-xs text-danger">Last error: {state.lastError}</span>}
+        </div>
+        <div className="flex gap-2">
+          <button type="button" className="btn-secondary text-sm" onClick={handlePush} disabled={busy !== null || !online}>
+            {busy === "push" ? "Pushing…" : "Sync Now"}
+          </button>
+          <button type="button" className="btn-secondary text-sm" onClick={handlePull} disabled={busy !== null || !online}>
+            {busy === "pull" ? "Restoring…" : "Restore from Cloud"}
+          </button>
+        </div>
       </div>
-      <div className="flex gap-2">
-        <button type="button" className="btn-secondary text-sm" onClick={handlePush} disabled={busy !== null || !online}>
-          {busy === "push" ? "Pushing…" : "Sync Now"}
-        </button>
-        <button type="button" className="btn-secondary text-sm" onClick={handlePull} disabled={busy !== null || !online}>
-          {busy === "pull" ? "Restoring…" : "Restore from Cloud"}
-        </button>
+
+      <div className="card p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">
+            Player pool (ADP, injuries, projections, stats, news){" "}
+            <span className="text-text-secondary font-normal">
+              ·{" "}
+              {online ? `last pushed ${timeAgo(playerDataState.lastPushedAt)}` : "offline — will sync when reconnected"}
+            </span>
+          </span>
+          {playerDataMessage && <span className="text-xs text-text-secondary">{playerDataMessage}</span>}
+          {playerDataState.lastError && !playerDataMessage && (
+            <span className="text-xs text-danger">Last error: {playerDataState.lastError}</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={handlePlayerDataPush}
+            disabled={playerDataBusy !== null || !online}
+          >
+            {playerDataBusy === "push" ? "Pushing…" : "Sync Now"}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={handlePlayerDataPull}
+            disabled={playerDataBusy !== null || !online}
+          >
+            {playerDataBusy === "pull" ? "Restoring…" : "Restore from Cloud"}
+          </button>
+        </div>
       </div>
     </div>
   );
