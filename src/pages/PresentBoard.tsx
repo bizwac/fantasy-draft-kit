@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ThemePreference } from "@/lib/useTheme";
 import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -64,8 +64,7 @@ export default function PresentBoard() {
   // disabled renders as its own chrome-free, non-fullscreen window that
   // a "share a window" picker sees like any other app window. Sized off
   // the actual screen (not a fixed 1280x800) so a 14-16 round grid has
-  // as much room as the laptop can give it before FitGrid below has to
-  // scale it down to stay fully visible.
+  // as much room as the laptop can give it before needing to scroll.
   function openPresentationWindow() {
     const width = Math.min(1600, Math.round(window.screen.availWidth * 0.92));
     const height = Math.min(1000, Math.round(window.screen.availHeight * 0.92));
@@ -89,12 +88,11 @@ export default function PresentBoard() {
   const grid = buildPostDraftGrid(draft, playersById);
 
   return (
-    // h-dvh (not min-h-dvh) is load-bearing here: FitGrid needs its
-    // flex-1 outer wrapper to be genuinely height-CAPPED at the viewport,
-    // not just no-smaller-than it, or the page grows to fit the grid's
-    // natural size instead of the grid shrinking to fit the page — which
-    // silently defeated the whole fit-to-window scaling below once the
-    // grid got tall enough to exceed the viewport on its own.
+    // h-dvh (not min-h-dvh) caps this at the real viewport height instead
+    // of just flooring it there, so the grid section below (flex-1
+    // min-h-0) is genuinely height-bounded and its own scrollbar is what
+    // handles overflow — not the whole page growing taller than the
+    // window.
     <div ref={containerRef} className="h-dvh overflow-hidden bg-surface text-text-primary p-3 md:p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -140,50 +138,15 @@ export default function PresentBoard() {
         />
       </div>
 
-      <FitGrid>
+      {/* PostDraftGrid's table is w-full/table-fixed, so it already
+          maximizes horizontal space on its own — no JS scaling needed
+          for that. This just caps the section to the remaining vertical
+          space and lets it scroll once the round count needs more room
+          than that, instead of shrinking the whole grid (including its
+          now-larger presentation text) to force everything on screen at
+          once. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
         <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} presentation />
-      </FitGrid>
-    </div>
-  );
-}
-
-// Screen-sharing to a meeting is a fire-and-forget view — nobody on the
-// other end can scroll it, so a 14-16 round grid needs to shrink to fit
-// the window rather than clip. Measures the grid at its natural
-// (unscaled) size, then scales it down just enough to fit both
-// dimensions of the space actually available; never scales up past 1
-// (a short draft with few teams just stays at its natural size,
-// top-left in the space, rather than being blown up to fill it).
-function FitGrid({ children }: { children: ReactNode }) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  useEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner) return;
-
-    function recompute() {
-      if (!outer || !inner) return;
-      const contentWidth = inner.scrollWidth;
-      const contentHeight = inner.scrollHeight;
-      if (contentWidth === 0 || contentHeight === 0) return;
-      const next = Math.min(1, outer.clientWidth / contentWidth, outer.clientHeight / contentHeight);
-      setScale(Number.isFinite(next) && next > 0 ? next : 1);
-    }
-
-    recompute();
-    const observer = new ResizeObserver(recompute);
-    observer.observe(outer);
-    observer.observe(inner);
-    return () => observer.disconnect();
-  }, [children]);
-
-  return (
-    <div ref={outerRef} className="flex-1 min-h-0 overflow-hidden flex justify-center">
-      <div ref={innerRef} style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
-        {children}
       </div>
     </div>
   );
