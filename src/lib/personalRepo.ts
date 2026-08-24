@@ -257,21 +257,43 @@ export async function importPersonalData(
   mergeTombstones(parsed.data.deletedDrafts ?? []);
 
   const existing = await db.personalRankings.toArray();
-  const byId = new Map(existing.map((o) => [o.playerId, o]));
+  const originalById = new Map(existing.map((o) => [o.playerId, o]));
+  const byId = new Map(originalById);
 
   for (const incoming of parsed.data.overrides) {
     const current = byId.get(incoming.playerId) ?? emptyOverride(incoming.playerId);
     byId.set(incoming.playerId, mergeOverride(current, incoming));
   }
 
-  await db.personalRankings.bulkPut([...byId.values()]);
+  // Only write records that actually changed — this runs on every
+  // auto-pull tick (see cloudSync.ts's startAutoPull, as often as every
+  // 1-2s on the Live View), and unconditionally rewriting every override
+  // regardless of whether merging changed anything added real,
+  // needless IndexedDB write pressure on top of the drafts write below.
+  const changedOverrides = [...byId.values()].filter((updated) => {
+    const original = originalById.get(updated.playerId);
+    return !original || JSON.stringify(original) !== JSON.stringify(updated);
+  });
+  if (changedOverrides.length > 0) {
+    await db.personalRankings.bulkPut(changedOverrides);
+  }
 
   let drafts = (parsed.data.drafts ?? []).filter((d) => !isRecentlyDeleted(d.id));
-  if (options?.protectNewerDrafts && drafts.length > 0) {
+  if (drafts.length > 0) {
     const existingDrafts = await db.drafts.bulkGet(drafts.map((d) => d.id));
     drafts = drafts.filter((incoming, i) => {
       const local = existingDrafts[i];
-      return !local || incoming.picks.length >= local.picks.length;
+      if (!local) return true;
+      if (options?.protectNewerDrafts && incoming.picks.length < local.picks.length) return false;
+      // Skip the write when nothing actually changed — the real fix
+      // here: every poll was otherwise rewriting *every* draft
+      // (including ones with hundreds of picks) regardless of whether
+      // there was anything new, which at a 1-2s polling interval built
+      // up enough sustained IndexedDB write pressure to visibly lag
+      // behind the latest fetch — the data on the wire was fresh
+      // within a couple seconds, but the write queue itself fell
+      // behind, so what actually rendered stayed stale far longer.
+      return JSON.stringify(incoming) !== JSON.stringify(local);
     });
   }
   if (drafts.length > 0) {
