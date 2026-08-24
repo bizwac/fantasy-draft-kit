@@ -9,7 +9,7 @@ import { exportPersonalData, importPersonalData, type ImportSummary } from "./pe
 // zero network exactly as before this existed.
 
 const STORAGE_KEY = "fade-signal:cloudSync";
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 150;
 
 export type SyncStatus = "idle" | "syncing" | "error";
 
@@ -216,12 +216,11 @@ let pollWorker: Worker | null = null;
 let pollFallbackTimer: ReturnType<typeof setInterval> | null = null;
 let pollVisibilityHandler: (() => void) | null = null;
 
-// Flat 2s poll — Vercel's Hobby plan blob storage allowance (10,000
-// "simple operations"/month) can't sustain this for a whole draft's
-// wall-clock time, but that's a deliberate tradeoff: upgrade to Pro for
-// the month a real draft happens, downgrade after. Simple and
-// predictable beats adaptive here.
-const DEFAULT_POLL_MS = 2000;
+// Flat poll interval. On Vercel Pro, Blob operations are pay-as-you-go
+// at a fraction of a cent per thousand (vs. Hobby's hard 10,000/month
+// cap), so a much faster interval is fine cost-wise for the month a
+// real draft happens — this assumes the Hobby->Pro upgrade plan.
+const DEFAULT_POLL_MS = 500;
 
 // Used by the presentation view (a separate tab/window/device meant to
 // be left running in a screen share — e.g. Zoom — with no interaction)
