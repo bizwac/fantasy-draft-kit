@@ -9,7 +9,7 @@ import { exportPersonalData, importPersonalData, type ImportSummary } from "./pe
 // zero network exactly as before this existed.
 
 const STORAGE_KEY = "fade-signal:cloudSync";
-const DEBOUNCE_MS = 3000;
+const DEBOUNCE_MS = 1000;
 
 export type SyncStatus = "idle" | "syncing" | "error";
 
@@ -147,13 +147,24 @@ export function installCloudSyncHooks(): void {
   window.addEventListener("online", () => void pushBackupToCloud());
 }
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollWorker: Worker | null = null;
 
-// Used by the presentation view (a separate tab/window/device meant for
-// screen-share) to stay current without the viewer touching anything.
-// Skips ticks while the tab is hidden or offline — no point pulling into
-// a screen no one's looking at, and a fetch would just fail offline
-// anyway. Returns a cleanup function so callers can use it directly as a
+// Used by the presentation view (a separate tab/window/device meant to
+// be left running in a screen share — e.g. Zoom — with no interaction)
+// to stay current without the viewer touching anything.
+//
+// The actual ticking happens in a dedicated Worker (see
+// workers/heartbeat.ts), not a plain setInterval on this page: Chrome/
+// Safari throttle a background/unfocused *page's* timers, sometimes to
+// roughly once a minute, and a screen-shared tab is very often not the
+// browser's own focused tab even though it's the thing being watched —
+// that's exactly what produced multi-second-to-a-minute-plus gaps
+// between a pick landing on one device and this view showing it. A
+// dedicated Worker's timer isn't subject to that page-level throttling,
+// so the heartbeat keeps arriving on schedule regardless of focus.
+// Every fetch/IndexedDB write from each tick still happens here on the
+// main thread — the worker only ever posts "it's time," nothing more.
+// Returns a cleanup function so callers can use it directly as a
 // useEffect return value. `onPulled` fires after each successful pull —
 // useState(() => loadX()) initializers only run once on mount, so a
 // caller reading localStorage-backed preferences (timer/column
@@ -161,19 +172,26 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 // device.
 export function startAutoPull(intervalMs: number, onPulled?: () => void): () => void {
   stopAutoPull();
-  pollTimer = setInterval(() => {
-    if (document.visibilityState !== "visible") return;
+
+  function tick() {
     if (!navigator.onLine) return;
     void pullBackupFromCloud({ protectNewerDrafts: true }).then((result) => {
       if (result.ok) onPulled?.();
     });
-  }, intervalMs);
+  }
+
+  tick();
+  pollWorker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
+  pollWorker.onmessage = tick;
+  pollWorker.postMessage({ type: "start", intervalMs });
+
   return stopAutoPull;
 }
 
 export function stopAutoPull(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
+  if (pollWorker) {
+    pollWorker.postMessage({ type: "stop" });
+    pollWorker.terminate();
+    pollWorker = null;
   }
 }
