@@ -118,14 +118,22 @@ export async function autoPullIfLocalEmpty(): Promise<void> {
   await pullBackupFromCloud({ protectNewerDrafts: true });
 }
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let debounceWorker: Worker | null = null;
 
+// Debounced via the same Worker technique as startAutoPull, not a plain
+// setTimeout — a setTimeout scheduled on the page can get suspended
+// outright (not just delayed) the moment a backgrounded/unfocused page
+// is throttled, which on iOS Safari can happen within seconds of the
+// drafter looking away from the app right after making a pick. A
+// Worker's timer keeps running regardless, so the pick actually reaches
+// the cloud on schedule instead of sitting queued until the app happens
+// to be foregrounded again.
 export function scheduleCloudPush(): void {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    debounceTimer = null;
-    void pushBackupToCloud();
-  }, DEBOUNCE_MS);
+  if (!debounceWorker) {
+    debounceWorker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
+    debounceWorker.onmessage = () => void pushBackupToCloud();
+  }
+  debounceWorker.postMessage({ type: "debounce", delayMs: DEBOUNCE_MS });
 }
 
 let hooksInstalled = false;
