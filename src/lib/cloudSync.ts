@@ -9,7 +9,7 @@ import { exportPersonalData, importPersonalData, type ImportSummary } from "./pe
 // zero network exactly as before this existed.
 
 const STORAGE_KEY = "fade-signal:cloudSync";
-const DEBOUNCE_MS = 1000;
+const DEBOUNCE_MS = 500;
 
 export type SyncStatus = "idle" | "syncing" | "error";
 

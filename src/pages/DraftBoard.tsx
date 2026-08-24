@@ -11,6 +11,7 @@ import { computeHandcuffs } from "@/lib/handcuff";
 import { setNote, toggleDoNotDraft, toggleFavorite } from "@/lib/personalRepo";
 import { loadTimerSettings } from "@/lib/timerSettings";
 import { loadColumnSettings, visibleOrderedColumns } from "@/lib/columnSettings";
+import { loadDraftBoardFilters, saveDraftBoardFilters, type SortKey } from "@/lib/draftBoardFilters";
 import type { Player, Position, RosterSlots } from "@/lib/types";
 import TurnTracker from "@/components/draftBoard/TurnTracker";
 import PlayerList from "@/components/draftBoard/PlayerList";
@@ -28,7 +29,6 @@ const OUT_STATUSES = new Set(["Out", "IR", "PUP", "Suspended"]);
 const POSITIONS: Array<Position | "ALL"> = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
 const ALL_POSITIONS: Position[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
-type SortKey = "adp" | "proj" | "vorp" | "value" | "tier" | "myrank";
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "adp", label: "ADP" },
   { value: "proj", label: "Projection" },
@@ -60,21 +60,65 @@ export default function DraftBoard() {
   const overrides = useLiveQuery(() => db.personalRankings.toArray(), []);
   const seasonStats = useLiveQuery(() => db.seasonStats.toArray(), []);
 
-  const [search, setSearch] = useState("");
-  const [position, setPosition] = useState<Position | "ALL">("ALL");
-  const [hideDrafted, setHideDrafted] = useState(false);
-  const [hideOutIR, setHideOutIR] = useState(false);
-  const [rookiesOnly, setRookiesOnly] = useState(false);
-  const [winningTeamOnly, setWinningTeamOnly] = useState(false);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [hideDoNotDraft, setHideDoNotDraft] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("adp");
+  // Search/filter/sort state is persisted per-draft (see
+  // draftBoardFilters.ts) — local-only, not part of cloud sync, so it's
+  // fine to read/write straight to localStorage rather than going
+  // through IndexedDB. Lazy initializers load the right draft's saved
+  // filters on the very first render (avoiding a flash of defaults);
+  // the effect below additionally reloads if `id` itself changes while
+  // this component stays mounted (e.g. navigating board-to-board
+  // without an intervening unmount), so one draft's filters can never
+  // leak into another's.
+  const [search, setSearch] = useState(() => loadDraftBoardFilters(id ?? "").search);
+  const [position, setPosition] = useState<Position | "ALL">(() => loadDraftBoardFilters(id ?? "").position);
+  const [hideDrafted, setHideDrafted] = useState(() => loadDraftBoardFilters(id ?? "").hideDrafted);
+  const [hideOutIR, setHideOutIR] = useState(() => loadDraftBoardFilters(id ?? "").hideOutIR);
+  const [rookiesOnly, setRookiesOnly] = useState(() => loadDraftBoardFilters(id ?? "").rookiesOnly);
+  const [winningTeamOnly, setWinningTeamOnly] = useState(() => loadDraftBoardFilters(id ?? "").winningTeamOnly);
+  const [favoritesOnly, setFavoritesOnly] = useState(() => loadDraftBoardFilters(id ?? "").favoritesOnly);
+  const [hideDoNotDraft, setHideDoNotDraft] = useState(() => loadDraftBoardFilters(id ?? "").hideDoNotDraft);
+  const [sortKey, setSortKey] = useState<SortKey>(() => loadDraftBoardFilters(id ?? "").sortKey);
   const [confirmingPlayer, setConfirmingPlayer] = useState<Player | null>(null);
   const [detailPlayer, setDetailPlayer] = useState<Player | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [rosterOpen, setRosterOpen] = useState(false);
   const [timerSettings] = useState(() => loadTimerSettings());
   const [columns] = useState(() => visibleOrderedColumns(loadColumnSettings()));
+
+  // Reloads if `id` changes without this component unmounting (the
+  // lazy initializers above only ever run once, at first mount) —
+  // redundant with them on the very first render (same id, same
+  // values, React bails out of re-rendering), load-bearing only for
+  // that same-instance navigation case.
+  useEffect(() => {
+    if (!id) return;
+    const loaded = loadDraftBoardFilters(id);
+    setSearch(loaded.search);
+    setPosition(loaded.position);
+    setHideDrafted(loaded.hideDrafted);
+    setHideOutIR(loaded.hideOutIR);
+    setRookiesOnly(loaded.rookiesOnly);
+    setWinningTeamOnly(loaded.winningTeamOnly);
+    setFavoritesOnly(loaded.favoritesOnly);
+    setHideDoNotDraft(loaded.hideDoNotDraft);
+    setSortKey(loaded.sortKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    saveDraftBoardFilters(id, {
+      search,
+      position,
+      hideDrafted,
+      hideOutIR,
+      rookiesOnly,
+      winningTeamOnly,
+      favoritesOnly,
+      hideDoNotDraft,
+      sortKey
+    });
+  }, [id, search, position, hideDrafted, hideOutIR, rookiesOnly, winningTeamOnly, favoritesOnly, hideDoNotDraft, sortKey]);
 
   const draftedIds = useMemo(() => new Set((draft?.picks ?? []).map((p) => p.playerId)), [draft?.picks]);
 
