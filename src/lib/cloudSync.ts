@@ -216,6 +216,13 @@ let pollWorker: Worker | null = null;
 let pollFallbackTimer: ReturnType<typeof setInterval> | null = null;
 let pollVisibilityHandler: (() => void) | null = null;
 
+// Flat 2s poll — Vercel's Hobby plan blob storage allowance (10,000
+// "simple operations"/month) can't sustain this for a whole draft's
+// wall-clock time, but that's a deliberate tradeoff: upgrade to Pro for
+// the month a real draft happens, downgrade after. Simple and
+// predictable beats adaptive here.
+const DEFAULT_POLL_MS = 2000;
+
 // Used by the presentation view (a separate tab/window/device meant to
 // be left running in a screen share — e.g. Zoom — with no interaction)
 // to stay current without the viewer touching anything.
@@ -237,13 +244,13 @@ let pollVisibilityHandler: (() => void) | null = null;
 // caller reading localStorage-backed preferences (timer/column
 // settings) needs this to notice a value that just arrived from another
 // device.
-export function startAutoPull(intervalMs: number, onPulled?: () => void): () => void {
+export function startAutoPull(onPulled?: () => void, intervalMs = DEFAULT_POLL_MS): () => void {
   stopAutoPull();
 
   // Skips a tick if the previous pull hasn't resolved yet, so polling
   // self-paces to the actual round trip instead of piling up
   // overlapping requests when a network hiccup makes one pull take
-  // longer than intervalMs — the next tick after that one finishes
+  // longer than the interval — the next tick after that one finishes
   // catches up immediately rather than waiting.
   let pullInFlight = false;
   function tick() {
@@ -261,13 +268,13 @@ export function startAutoPull(intervalMs: number, onPulled?: () => void): () => 
   tick();
   pollWorker = tryCreateHeartbeatWorker(() => {
     pollWorker = null;
-    startPollFallback(tick, intervalMs);
+    restartPollFallback(tick, intervalMs);
   });
   if (pollWorker) {
     pollWorker.onmessage = tick;
     pollWorker.postMessage({ type: "start", intervalMs });
   } else {
-    startPollFallback(tick, intervalMs);
+    restartPollFallback(tick, intervalMs);
   }
 
   return stopAutoPull;
@@ -279,7 +286,10 @@ export function startAutoPull(intervalMs: number, onPulled?: () => void): () => 
 // hidden (no point pulling into a screen no one's looking at) but
 // pulls immediately on regaining visibility so tabbing back doesn't
 // wait out a possibly-throttled interval.
-function startPollFallback(tick: () => void, intervalMs: number): void {
+function restartPollFallback(tick: () => void, intervalMs: number): void {
+  if (pollFallbackTimer) clearInterval(pollFallbackTimer);
+  if (pollVisibilityHandler) document.removeEventListener("visibilitychange", pollVisibilityHandler);
+
   pollFallbackTimer = setInterval(() => {
     if (document.visibilityState === "visible") tick();
   }, intervalMs);

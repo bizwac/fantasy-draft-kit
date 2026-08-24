@@ -14,8 +14,6 @@ import OnClockTimer from "@/components/draftBoard/OnClockTimer";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import Badge from "@/components/player/Badge";
 
-const PULL_INTERVAL_MS = 750;
-
 // A read-only, chrome-free view meant for a second tab/window/device on
 // screen-share while the real management happens elsewhere (this app,
 // same browser or a different one). Pulls from the cloud backup on an
@@ -35,7 +33,7 @@ export default function PresentBoard() {
   // class applied at all and has no way to change it either.
   const { preference, setPreference } = useTheme();
 
-  useEffect(() => startAutoPull(PULL_INTERVAL_MS, () => setTimerSettings(loadTimerSettings())), []);
+  useEffect(() => startAutoPull(() => setTimerSettings(loadTimerSettings())), []);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
