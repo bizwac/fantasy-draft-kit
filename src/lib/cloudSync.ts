@@ -134,7 +134,29 @@ function pushViaBeacon(data: unknown): void {
   navigator.sendBeacon("/api/sync", blob);
 }
 
+// Construction can fail synchronously (Workers unsupported/disabled) or
+// asynchronously (the worker script itself fails to load/parse — e.g. a
+// stricter CSP enforcement or a WebKit module-worker quirk on some
+// Safari versions) — either way this must never throw or leave the app
+// unable to render, so every caller treats a null return (now or later,
+// via onWorkerError) as "fall back to a plain page timer" rather than a
+// fatal error.
+function tryCreateHeartbeatWorker(onWorkerError: () => void): Worker | null {
+  try {
+    const worker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
+    worker.onerror = () => {
+      worker.terminate();
+      onWorkerError();
+    };
+    return worker;
+  } catch {
+    return null;
+  }
+}
+
 let debounceWorker: Worker | null = null;
+let debounceWorkerUnavailable = false;
+let plainDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Debounced via the same Worker technique as startAutoPull, not a plain
 // setTimeout — a setTimeout scheduled on the page can get suspended
@@ -145,15 +167,30 @@ let debounceWorker: Worker | null = null;
 // the cloud on schedule instead of sitting queued until the app happens
 // to be foregrounded again. This is the source of truth for
 // lastPushedAt/lastError (Settings reads it); pushViaBeacon above is
-// purely a speed optimization run alongside it.
+// purely a speed optimization run alongside it. Falls back to a plain
+// setTimeout (subject to the throttling this was meant to avoid, but
+// still functional) if the Worker can't be created or errors out.
 export function scheduleCloudPush(): void {
   void exportPersonalData().then(pushViaBeacon);
 
-  if (!debounceWorker) {
-    debounceWorker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
-    debounceWorker.onmessage = () => void pushBackupToCloud();
+  if (!debounceWorker && !debounceWorkerUnavailable) {
+    debounceWorker = tryCreateHeartbeatWorker(() => {
+      debounceWorker = null;
+      debounceWorkerUnavailable = true;
+    });
+    if (debounceWorker) debounceWorker.onmessage = () => void pushBackupToCloud();
+    else debounceWorkerUnavailable = true;
   }
-  debounceWorker.postMessage({ type: "debounce", delayMs: DEBOUNCE_MS });
+
+  if (debounceWorker) {
+    debounceWorker.postMessage({ type: "debounce", delayMs: DEBOUNCE_MS });
+  } else {
+    if (plainDebounceTimer) clearTimeout(plainDebounceTimer);
+    plainDebounceTimer = setTimeout(() => {
+      plainDebounceTimer = null;
+      void pushBackupToCloud();
+    }, DEBOUNCE_MS);
+  }
 }
 
 let hooksInstalled = false;
@@ -176,6 +213,8 @@ export function installCloudSyncHooks(): void {
 }
 
 let pollWorker: Worker | null = null;
+let pollFallbackTimer: ReturnType<typeof setInterval> | null = null;
+let pollVisibilityHandler: (() => void) | null = null;
 
 // Used by the presentation view (a separate tab/window/device meant to
 // be left running in a screen share — e.g. Zoom — with no interaction)
@@ -209,11 +248,34 @@ export function startAutoPull(intervalMs: number, onPulled?: () => void): () => 
   }
 
   tick();
-  pollWorker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
-  pollWorker.onmessage = tick;
-  pollWorker.postMessage({ type: "start", intervalMs });
+  pollWorker = tryCreateHeartbeatWorker(() => {
+    pollWorker = null;
+    startPollFallback(tick, intervalMs);
+  });
+  if (pollWorker) {
+    pollWorker.onmessage = tick;
+    pollWorker.postMessage({ type: "start", intervalMs });
+  } else {
+    startPollFallback(tick, intervalMs);
+  }
 
   return stopAutoPull;
+}
+
+// Plain setInterval fallback for when the Worker can't be created or
+// errors out — still functional, just subject to the background-tab
+// timer throttling the Worker exists to avoid. Skips ticks while
+// hidden (no point pulling into a screen no one's looking at) but
+// pulls immediately on regaining visibility so tabbing back doesn't
+// wait out a possibly-throttled interval.
+function startPollFallback(tick: () => void, intervalMs: number): void {
+  pollFallbackTimer = setInterval(() => {
+    if (document.visibilityState === "visible") tick();
+  }, intervalMs);
+  pollVisibilityHandler = () => {
+    if (document.visibilityState === "visible") tick();
+  };
+  document.addEventListener("visibilitychange", pollVisibilityHandler);
 }
 
 export function stopAutoPull(): void {
@@ -221,5 +283,13 @@ export function stopAutoPull(): void {
     pollWorker.postMessage({ type: "stop" });
     pollWorker.terminate();
     pollWorker = null;
+  }
+  if (pollFallbackTimer) {
+    clearInterval(pollFallbackTimer);
+    pollFallbackTimer = null;
+  }
+  if (pollVisibilityHandler) {
+    document.removeEventListener("visibilitychange", pollVisibilityHandler);
+    pollVisibilityHandler = null;
   }
 }
