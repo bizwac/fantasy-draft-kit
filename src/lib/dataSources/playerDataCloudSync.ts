@@ -2,13 +2,26 @@ import { db } from "@/lib/db";
 import type { Player, PlayerSeasonStats, HuddlePlayerIndexEntry } from "@/lib/types";
 import { loadRefreshStatus, saveRefreshStatus } from "@/lib/refreshStatus";
 
-// Cloud-syncs the *shared* player pool (ADP, injuries, projections,
-// season stats, news links) separately from cloudSync.ts's personal-data
-// backup (drafts, rankings, favorites) — it's an order of magnitude
-// bigger, changes on a completely different rhythm (a refresh/import,
-// not every pick), and is bulk-rewritten wholesale rather than
-// record-by-record, so folding it into the same debounced push would've
-// meant re-uploading several MB on every single draft pick.
+// Cloud-syncs the *shared* player pool separately from cloudSync.ts's
+// personal-data backup (drafts, rankings, favorites) — it's an order of
+// magnitude bigger and changes on a completely different rhythm.
+//
+// The `players` table itself gets special treatment here: only the
+// handful of fields a CSV import can set (projections, contract year,
+// SoS, usage, winning-team signals) are synced, and ONLY a successful
+// CSV import ever pushes them — never a routine Sleeper/ADP refresh.
+// Every other device only ever *reads* that projection data (merged
+// onto its own players by id, never replacing team/position/ADP/injury
+// data). This is deliberately narrower than a naive "sync the whole
+// table both ways" design: ADP/injuries are regenerated per-device from
+// the same public source anyway, so syncing them added a real bug —
+// whichever device's routine 24h refresh happened to run (and push)
+// last would silently overwrite the cloud's projections with a freshly
+// rebuilt player record that had never had projections applied,
+// spreading an empty projection set to every device that pulled after.
+// seasonStats/huddlePlayers don't have this failure mode (a refresh
+// only fills an empty seasonStats table, and huddlePlayers is an
+// unrelated index), so they keep the simpler full-table sync.
 
 const STORAGE_KEY = "fade-signal:playerDataCloudSync";
 
@@ -36,14 +49,12 @@ export function getPlayerDataCloudState(): PlayerDataCloudState {
   return loadState();
 }
 
-type TableName = "players" | "seasonStats" | "huddlePlayers";
-
 interface TableExport<T> {
   exportedAt: string;
   rows: T[];
 }
 
-async function pushTable<T>(table: TableName, rows: T[]): Promise<{ ok: boolean; error?: string }> {
+async function pushTable<T>(table: string, rows: T[]): Promise<{ ok: boolean; error?: string }> {
   try {
     const payload: TableExport<T> = { exportedAt: new Date().toISOString(), rows };
     const res = await fetch(`/api/playerDataSync?table=${table}`, {
@@ -61,7 +72,7 @@ async function pushTable<T>(table: TableName, rows: T[]): Promise<{ ok: boolean;
   }
 }
 
-async function pullTable<T>(table: TableName): Promise<{ ok: boolean; rows?: T[]; exportedAt?: string; error?: string }> {
+async function pullTable<T>(table: string): Promise<{ ok: boolean; rows?: T[]; exportedAt?: string; error?: string }> {
   try {
     const res = await fetch(`/api/playerDataSync?table=${table}`, { method: "GET" });
     if (res.status === 404) return { ok: false, error: "No cloud data yet." };
@@ -77,145 +88,191 @@ async function pullTable<T>(table: TableName): Promise<{ ok: boolean; rows?: T[]
   }
 }
 
-// Pushes all three tables. Best-effort per table — e.g. seasonStats
-// failing shouldn't stop players from reaching the cloud — but any
-// failure is still surfaced so Settings can show it.
-export async function pushPlayerDataToCloud(): Promise<{ ok: boolean; error?: string }> {
+// Only the fields a CSV import can actually set — never adp, team,
+// position, injuryStatus, or anything else Sleeper/ADP own.
+interface ProjectionFields {
+  id: string;
+  projPoints: number | null;
+  contractYear: boolean | null;
+  teamWinningRecordLastYear: boolean | null;
+  teamProjectedWinning: boolean | null;
+  winningTeam: boolean | null;
+  sosSeason: number | null;
+  sosPlayoffs: number | null;
+  usage: Player["usage"];
+}
+
+function extractProjectionFields(p: Player): ProjectionFields {
+  return {
+    id: p.id,
+    projPoints: p.projPoints,
+    contractYear: p.contractYear,
+    teamWinningRecordLastYear: p.teamWinningRecordLastYear,
+    teamProjectedWinning: p.teamProjectedWinning,
+    winningTeam: p.winningTeam,
+    sosSeason: p.sosSeason,
+    sosPlayoffs: p.sosPlayoffs,
+    usage: p.usage
+  };
+}
+
+let isApplyingRemoteData = false;
+
+// Call this once, right after a successful CSV import (see
+// ProjectionsImportCard.tsx) — this is the *only* place projection data
+// ever gets pushed to the cloud. Only players a CSV actually touched
+// are included, so this never overwrites a different device's own
+// in-progress import with a wholesale player dump.
+export async function pushProjectionFieldsToCloud(): Promise<{ ok: boolean; error?: string }> {
   if (!navigator.onLine) return { ok: false, error: "Offline" };
-  const [players, seasonStats, huddlePlayers] = await Promise.all([
-    db.players.toArray(),
-    db.seasonStats.toArray(),
-    db.huddlePlayers.toArray()
-  ]);
-  const results = await Promise.all([
-    pushTable("players", players),
-    pushTable("seasonStats", seasonStats),
-    pushTable("huddlePlayers", huddlePlayers)
-  ]);
-  const failed = results.find((r) => !r.ok);
-  if (failed) {
-    saveState({ ...loadState(), lastError: failed.error ?? "Push failed" });
-    return { ok: false, error: failed.error };
+  const players = await db.players.toArray();
+  const rows = players
+    .filter(
+      (p) =>
+        p.projPoints !== null ||
+        p.contractYear !== null ||
+        p.teamWinningRecordLastYear !== null ||
+        p.teamProjectedWinning !== null ||
+        p.sosSeason !== null ||
+        p.sosPlayoffs !== null ||
+        p.usage !== null
+    )
+    .map(extractProjectionFields);
+
+  const result = await pushTable("players", rows);
+  if (!result.ok) {
+    saveState({ ...loadState(), lastError: result.error ?? "Push failed" });
+    return result;
   }
   saveState({ ...loadState(), lastPushedAt: new Date().toISOString(), lastError: null });
   return { ok: true };
 }
 
-let isApplyingRemoteData = false;
-
-// Pulls all three tables and replaces the local copies wholesale — the
-// same "clear and rebuild" semantics refreshPlayerData already uses for
-// `players`, applied consistently to seasonStats/huddlePlayers. Also
-// restores the pushing device's refreshStatus (so this device's own 24h
-// staleness clock reflects when the data was actually last refreshed,
-// not merely when it happened to be pulled) — a table that fails to
-// pull just leaves its local copy and staleness clock untouched.
-export async function pullPlayerDataFromCloud(): Promise<{ ok: boolean; error?: string }> {
+// Pulls the cloud's projection fields and merges them onto matching
+// local players by id (Sleeper's player IDs are stable/shared across
+// devices) — never touches team/position/adp/injury data, so this is
+// always safe regardless of how fresh this device's own Sleeper/ADP
+// refresh is. A row whose player no longer exists locally is skipped.
+export async function pullProjectionFieldsFromCloud(): Promise<{ ok: boolean; matched?: number; error?: string }> {
   if (!navigator.onLine) return { ok: false, error: "Offline" };
-  const [playersRes, seasonStatsRes, huddleRes] = await Promise.all([
-    pullTable<Player>("players"),
-    pullTable<PlayerSeasonStats>("seasonStats"),
-    pullTable<HuddlePlayerIndexEntry>("huddlePlayers")
-  ]);
-
-  if (!playersRes.ok) {
-    saveState({ ...loadState(), lastError: playersRes.error ?? "Pull failed" });
-    return { ok: false, error: playersRes.error };
+  const result = await pullTable<ProjectionFields>("players");
+  if (!result.ok) {
+    saveState({ ...loadState(), lastError: result.error ?? "Pull failed" });
+    return { ok: false, error: result.error };
   }
+
+  const rows = result.rows ?? [];
+  const localPlayers = await db.players.bulkGet(rows.map((r) => r.id));
+  const updates: Player[] = [];
+  rows.forEach((row, i) => {
+    const local = localPlayers[i];
+    if (!local) return;
+    updates.push({
+      ...local,
+      projPoints: row.projPoints,
+      contractYear: row.contractYear,
+      teamWinningRecordLastYear: row.teamWinningRecordLastYear,
+      teamProjectedWinning: row.teamProjectedWinning,
+      winningTeam: row.winningTeam,
+      sosSeason: row.sosSeason,
+      sosPlayoffs: row.sosPlayoffs,
+      usage: row.usage,
+      lastUpdated: new Date().toISOString()
+    });
+  });
 
   isApplyingRemoteData = true;
   try {
-    await db.transaction("rw", db.players, db.seasonStats, db.huddlePlayers, async () => {
-      await db.players.clear();
-      if (playersRes.rows!.length > 0) await db.players.bulkAdd(playersRes.rows!);
-      if (seasonStatsRes.ok) {
-        await db.seasonStats.clear();
-        if (seasonStatsRes.rows!.length > 0) await db.seasonStats.bulkAdd(seasonStatsRes.rows!);
-      }
-      if (huddleRes.ok) {
-        await db.huddlePlayers.clear();
-        if (huddleRes.rows!.length > 0) await db.huddlePlayers.bulkAdd(huddleRes.rows!);
-      }
-    });
+    if (updates.length > 0) await db.players.bulkPut(updates);
   } finally {
     isApplyingRemoteData = false;
   }
 
-  const at = playersRes.exportedAt ?? new Date().toISOString();
+  if (result.exportedAt) {
+    const status = loadRefreshStatus();
+    saveRefreshStatus({ ...status, lastProjectionsImportAt: result.exportedAt });
+  }
+
+  saveState({ ...loadState(), lastPulledAt: new Date().toISOString(), lastError: null });
+  return { ok: true, matched: updates.length };
+}
+
+// Called once at app start (see main.tsx) and by the manual "Restore
+// from Cloud" button — merge-only, so it's always safe to just pull
+// every time rather than gating on a "is the cloud newer" check.
+export async function pullPlayerDataOnOpen(): Promise<void> {
+  if (!navigator.onLine) return;
+  try {
+    await pullProjectionFieldsFromCloud();
+  } catch {
+    // Best-effort — a device that can't reach the cloud just keeps
+    // whatever projections it already has locally.
+  }
+  await pullSeasonStatsAndHuddleIfNewer();
+}
+
+// seasonStats/huddlePlayers keep the simpler full-table replace — a
+// refresh only fills an empty seasonStats table (never edits existing
+// rows) and huddlePlayers is an unrelated news-link index, so neither
+// has the "routine refresh silently overwrites imported data" failure
+// mode that players/projections did.
+async function pullSeasonStatsAndHuddleIfNewer(): Promise<void> {
+  const [seasonStatsRes, huddleRes] = await Promise.all([
+    pullTable<PlayerSeasonStats>("seasonStats"),
+    pullTable<HuddlePlayerIndexEntry>("huddlePlayers")
+  ]);
+
+  isApplyingRemoteData = true;
+  try {
+    if (seasonStatsRes.ok && (await db.seasonStats.count()) === 0 && (seasonStatsRes.rows?.length ?? 0) > 0) {
+      await db.seasonStats.bulkAdd(seasonStatsRes.rows!);
+    }
+    if (huddleRes.ok && (huddleRes.rows?.length ?? 0) > 0) {
+      await db.huddlePlayers.clear();
+      await db.huddlePlayers.bulkAdd(huddleRes.rows!);
+    }
+  } finally {
+    isApplyingRemoteData = false;
+  }
+
   const status = loadRefreshStatus();
   saveRefreshStatus({
     ...status,
-    sleeper: { ok: true, count: playersRes.rows!.length, error: null, at },
-    adp: { ok: true, count: playersRes.rows!.length, error: null, at },
-    lastSeasonStatsRefreshAt: seasonStatsRes.ok ? at : status.lastSeasonStatsRefreshAt,
-    lastHuddleIndexRefreshAt: huddleRes.ok ? at : status.lastHuddleIndexRefreshAt
+    lastSeasonStatsRefreshAt: seasonStatsRes.ok ? (seasonStatsRes.exportedAt ?? status.lastSeasonStatsRefreshAt) : status.lastSeasonStatsRefreshAt,
+    lastHuddleIndexRefreshAt: huddleRes.ok ? (huddleRes.exportedAt ?? status.lastHuddleIndexRefreshAt) : status.lastHuddleIndexRefreshAt
   });
-
-  saveState({ ...loadState(), lastPulledAt: new Date().toISOString(), lastError: null });
-  return { ok: true };
-}
-
-// Called once at app start (see main.tsx) — "any device that's opened
-// should try to refresh its player data from the cloud." Only actually
-// pulls if the cloud copy is newer than what this device last pushed
-// (or this device has no player data at all), so opening the app on a
-// device that just refreshed moments ago doesn't get clobbered by a
-// slightly older cloud snapshot mid-race.
-export async function pullPlayerDataIfCloudIsNewer(): Promise<void> {
-  if (!navigator.onLine) return;
-  try {
-    const localCount = await db.players.count();
-    if (localCount === 0) {
-      await pullPlayerDataFromCloud();
-      return;
-    }
-    const res = await fetch("/api/playerDataSync?table=players", { method: "GET" });
-    if (!res.ok) return;
-    const json = (await res.json()) as { exportedAt?: string };
-    if (!json?.exportedAt) return;
-    const localPushedAt = loadState().lastPushedAt;
-    if (!localPushedAt || new Date(json.exportedAt).getTime() > new Date(localPushedAt).getTime()) {
-      await pullPlayerDataFromCloud();
-    }
-  } catch {
-    // Best-effort — the existing 24h staleness refresh (autoRefresh.ts)
-    // is the fallback if this can't reach the cloud at all.
-  }
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const DEBOUNCE_MS = 5000;
 
-function scheduleCloudPush(): void {
+function scheduleCloudPush(table: string, getRows: () => Promise<unknown[]>): void {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
-    void pushPlayerDataToCloud();
+    void getRows().then((rows) => pushTable(table, rows));
   }, DEBOUNCE_MS);
 }
 
 let hooksInstalled = false;
 
-// Registers a debounced auto-push whenever players/seasonStats/
-// huddlePlayers change locally — covers every write path (the 24h ADP
-// refresh, season-stats/huddle-index refresh, and a manual CSV
-// projections import) without any of those call sites needing to know
-// cloud sync exists. Mirrors cloudSync.ts's installCloudSyncHooks for
-// drafts/personalRankings, kept as its own separate set of hooks since
-// this data changes on a different rhythm and is bulk-rewritten rather
-// than edited record by record.
+// Auto-pushes seasonStats/huddlePlayers on any local write (their own
+// refresh) — deliberately does NOT include db.players; that table's
+// cloud copy only ever changes via pushProjectionFieldsToCloud, called
+// explicitly from a successful CSV import.
 export function installPlayerDataCloudSyncHooks(): void {
   if (hooksInstalled) return;
   hooksInstalled = true;
-  for (const table of [db.players, db.seasonStats, db.huddlePlayers]) {
-    table.hook("creating", () => {
-      if (!isApplyingRemoteData) scheduleCloudPush();
-    });
-    table.hook("updating", () => {
-      if (!isApplyingRemoteData) scheduleCloudPush();
-    });
-    table.hook("deleting", () => {
-      if (!isApplyingRemoteData) scheduleCloudPush();
-    });
-  }
+  db.seasonStats.hook("creating", () => {
+    if (!isApplyingRemoteData) scheduleCloudPush("seasonStats", () => db.seasonStats.toArray());
+  });
+  db.seasonStats.hook("updating", () => {
+    if (!isApplyingRemoteData) scheduleCloudPush("seasonStats", () => db.seasonStats.toArray());
+  });
+  db.huddlePlayers.hook("creating", () => {
+    if (!isApplyingRemoteData) scheduleCloudPush("huddlePlayers", () => db.huddlePlayers.toArray());
+  });
+  db.huddlePlayers.hook("updating", () => {
+    if (!isApplyingRemoteData) scheduleCloudPush("huddlePlayers", () => db.huddlePlayers.toArray());
+  });
 }

@@ -86,10 +86,31 @@ export async function refreshPlayerData(settings: {
   // DST alone matches by team code instead.
   const dstByTeam = new Map<string, string>(); // normalized team -> player id
 
+  // Sleeper's player IDs are stable across refreshes, so this is a safe
+  // key to carry forward CSV-imported supplemental data by. Without this,
+  // every refresh (auto, every 24h, or a manual click) rebuilds each
+  // player from emptyPlayer() — which always starts projPoints,
+  // contractYear, sosSeason/sosPlayoffs, usage, and the winning-team
+  // fields at null — silently wiping a CSV import a few hours after it
+  // landed. None of those fields are ever populated by Sleeper or ADP,
+  // so there's nothing here for them to conflict with.
+  const existingById = new Map((await db.players.toArray()).map((p) => [p.id, p]));
+
   try {
     const sleeperPlayers = await fetchSleeperPlayers();
     for (const sp of sleeperPlayers) {
       const player = emptyPlayer(sp);
+      const existing = existingById.get(player.id);
+      if (existing) {
+        player.projPoints = existing.projPoints;
+        player.contractYear = existing.contractYear;
+        player.teamWinningRecordLastYear = existing.teamWinningRecordLastYear;
+        player.teamProjectedWinning = existing.teamProjectedWinning;
+        player.winningTeam = existing.winningTeam;
+        player.sosSeason = existing.sosSeason;
+        player.sosPlayoffs = existing.sosPlayoffs;
+        player.usage = existing.usage;
+      }
       players.set(player.id, player);
       matchIndex.set(playerMatchKey(sp.name, sp.position), sp.id);
       if (sp.position === "DST") dstByTeam.set(normalizeTeam(sp.team), sp.id);

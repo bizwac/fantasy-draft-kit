@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { getCloudSyncState, pullBackupFromCloud, pushBackupToCloud, type CloudSyncState } from "@/lib/cloudSync";
 import {
   getPlayerDataCloudState,
-  pullPlayerDataFromCloud,
-  pushPlayerDataToCloud,
+  pullProjectionFieldsFromCloud,
+  pushProjectionFieldsToCloud,
   type PlayerDataCloudState
 } from "@/lib/dataSources/playerDataCloudSync";
 import { useOnlineStatus } from "@/lib/useOnlineStatus";
@@ -61,24 +61,19 @@ export default function CloudSyncPanel() {
   async function handlePlayerDataPush() {
     setPlayerDataBusy("push");
     setPlayerDataMessage(null);
-    const result = await pushPlayerDataToCloud();
-    setPlayerDataMessage(result.ok ? "Player data pushed." : `Couldn't push: ${result.error}`);
+    const result = await pushProjectionFieldsToCloud();
+    setPlayerDataMessage(result.ok ? "Projections pushed." : `Couldn't push: ${result.error}`);
     setPlayerDataState(getPlayerDataCloudState());
     setPlayerDataBusy(null);
   }
 
   async function handlePlayerDataPull() {
-    if (
-      !confirm(
-        "Pull the cloud copy of the player pool (ADP, injuries, projections, season stats, news links)? This replaces the local copy of that data — it doesn't touch your drafts or personal rankings."
-      )
-    ) {
-      return;
-    }
     setPlayerDataBusy("pull");
     setPlayerDataMessage(null);
-    const result = await pullPlayerDataFromCloud();
-    setPlayerDataMessage(result.ok ? "Player data restored from cloud." : `Couldn't restore: ${result.error}`);
+    const result = await pullProjectionFieldsFromCloud();
+    setPlayerDataMessage(
+      result.ok ? `Merged projections onto ${result.matched ?? 0} player(s).` : `Couldn't restore: ${result.error}`
+    );
     setPlayerDataState(getPlayerDataCloudState());
     setPlayerDataBusy(null);
   }
@@ -109,11 +104,15 @@ export default function CloudSyncPanel() {
       <div className="card p-4 flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="flex flex-col gap-0.5">
           <span className="font-medium">
-            Player pool (ADP, injuries, projections, stats, news){" "}
+            CSV-imported projections{" "}
             <span className="text-text-secondary font-normal">
               ·{" "}
               {online ? `last pushed ${timeAgo(playerDataState.lastPushedAt)}` : "offline — will sync when reconnected"}
             </span>
+          </span>
+          <span className="text-xs text-text-secondary">
+            Pushed automatically after a CSV import — this only pulls it back down; ADP/injuries/season stats/news
+            stay per-device and refresh on their own.
           </span>
           {playerDataMessage && <span className="text-xs text-text-secondary">{playerDataMessage}</span>}
           {playerDataState.lastError && !playerDataMessage && (
@@ -135,7 +134,7 @@ export default function CloudSyncPanel() {
             onClick={handlePlayerDataPull}
             disabled={playerDataBusy !== null || !online}
           >
-            {playerDataBusy === "pull" ? "Restoring…" : "Restore from Cloud"}
+            {playerDataBusy === "pull" ? "Restoring…" : "Pull from Cloud"}
           </button>
         </div>
       </div>

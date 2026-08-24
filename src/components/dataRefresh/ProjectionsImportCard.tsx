@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { applyProjectionImport } from "@/lib/dataSources/projectionsImport";
 import { parseCsvFile, applyColumnMapping, type ProjectionColumnMapping } from "@/lib/dataSources/csvImport";
+import { pushProjectionFieldsToCloud } from "@/lib/dataSources/playerDataCloudSync";
 
 export default function ProjectionsImportCard({
   onImported,
@@ -48,6 +49,12 @@ export default function ProjectionsImportCard({
       const result = await applyProjectionImport(mapped);
       setSummary(result);
       onImported(new Date().toISOString());
+      // This is the one and only place projection data gets pushed to
+      // the cloud — every other device only ever reads it (see
+      // playerDataCloudSync.ts). Fire-and-forget: a failed push here
+      // just means other devices stay on the previous cloud snapshot
+      // until the next successful import, not a broken import.
+      void pushProjectionFieldsToCloud();
     } finally {
       setImporting(false);
     }

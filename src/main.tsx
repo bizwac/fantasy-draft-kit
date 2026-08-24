@@ -5,7 +5,7 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { requestPersistentStorage } from "./lib/persistence";
 import { autoPullIfLocalEmpty, installCloudSyncHooks } from "./lib/cloudSync";
-import { installPlayerDataCloudSyncHooks, pullPlayerDataIfCloudIsNewer } from "./lib/dataSources/playerDataCloudSync";
+import { installPlayerDataCloudSyncHooks, pullPlayerDataOnOpen } from "./lib/dataSources/playerDataCloudSync";
 import { startAutoRefreshWatch } from "./lib/dataSources/autoRefresh";
 import "./styles/index.css";
 
@@ -14,15 +14,14 @@ installCloudSyncHooks();
 installPlayerDataCloudSyncHooks();
 void autoPullIfLocalEmpty();
 
-// Try the cloud copy of the player pool (ADP, injuries, projections,
-// season stats, news links) before falling back to autoRefreshWatch's
-// own 24h-staleness clock — a device that's never refreshed, or whose
-// data is older than another device's, gets caught up from the cloud
-// instead of re-fetching from Sleeper/FFC from scratch. Awaited ahead
-// of startAutoRefreshWatch so a successful pull's updated staleness
-// timestamps are what that check actually sees.
+// Merges in the cloud's CSV-imported projection data (pushed only by a
+// successful CSV import elsewhere — see ProjectionsImportCard.tsx) —
+// safe to do unconditionally on every open since it only touches the
+// projection-only fields on players that already exist locally, never
+// team/position/ADP/injury data, so it can't race or conflict with
+// this device's own Sleeper/ADP refresh below.
 void (async () => {
-  await pullPlayerDataIfCloudIsNewer();
+  await pullPlayerDataOnOpen();
   startAutoRefreshWatch();
 })();
 
