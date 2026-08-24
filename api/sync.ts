@@ -37,8 +37,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const result =
     req.method === "GET"
       ? await pullBackup()
-      : req.method === "PUT"
-        ? await pushBackup(await readBody(req))
+      : req.method === "PUT" || req.method === "POST"
+        ? // POST is accepted as an alias for PUT specifically so the client
+          // can push via navigator.sendBeacon() (POST-only, no custom
+          // headers) as a low-latency, backgrounding-resistant delivery
+          // path alongside the normal fetch-based PUT — see
+          // cloudSync.ts's scheduleCloudPush.
+          await pushBackup(await readBody(req))
         : { status: 405, contentType: "application/json", body: JSON.stringify({ error: "Method not allowed" }) };
 
   res.statusCode = result.status;

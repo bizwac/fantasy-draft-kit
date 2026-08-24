@@ -118,6 +118,22 @@ export async function autoPullIfLocalEmpty(): Promise<void> {
   await pullBackupFromCloud({ protectNewerDrafts: true });
 }
 
+// sendBeacon is handed off to the browser's own network stack the
+// instant it's called — unlike a fetch() kicked off from a timer that
+// fires later, there's no window between "the write happened" and "the
+// request is issued" for the OS to suspend. That gap is exactly what a
+// Worker-based debounce (below) still can't close: even a Worker's
+// timer still has to *wait out the debounce* before firing, and on iOS
+// a backgrounded PWA can apparently stop that pending fetch from ever
+// completing during that wait. Fire-and-forget by design (no response,
+// so it never updates lastPushedAt/lastError) — it's a low-latency
+// head start, not a replacement for the tracked push below.
+function pushViaBeacon(data: unknown): void {
+  if (typeof navigator.sendBeacon !== "function") return;
+  const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+  navigator.sendBeacon("/api/sync", blob);
+}
+
 let debounceWorker: Worker | null = null;
 
 // Debounced via the same Worker technique as startAutoPull, not a plain
@@ -127,8 +143,12 @@ let debounceWorker: Worker | null = null;
 // drafter looking away from the app right after making a pick. A
 // Worker's timer keeps running regardless, so the pick actually reaches
 // the cloud on schedule instead of sitting queued until the app happens
-// to be foregrounded again.
+// to be foregrounded again. This is the source of truth for
+// lastPushedAt/lastError (Settings reads it); pushViaBeacon above is
+// purely a speed optimization run alongside it.
 export function scheduleCloudPush(): void {
+  void exportPersonalData().then(pushViaBeacon);
+
   if (!debounceWorker) {
     debounceWorker = new Worker(new URL("../workers/heartbeat.ts", import.meta.url), { type: "module" });
     debounceWorker.onmessage = () => void pushBackupToCloud();
