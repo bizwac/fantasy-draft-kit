@@ -83,7 +83,17 @@ export default defineConfig(({ command }) => ({
         // Versioned precache + purge old caches on activate (spec §7b.5)
         // so a bad deploy can't strand the user on stale cached code.
         cleanupOutdatedCaches: true,
-        clientsClaim: true
+        clientsClaim: true,
+        // Without this, a newly-downloaded SW sits in "waiting" until
+        // every open tab is fully closed — on iOS, where a Home Screen
+        // PWA is basically never "closed" (backgrounding ≠ closing) and
+        // background execution is heavily throttled, that left installs
+        // stuck on stale code indefinitely regardless of how often
+        // main.tsx polled for updates. skipWaiting makes the new worker
+        // activate the instant it installs, independent of any
+        // message-passing between the page and the worker — main.tsx's
+        // controllerchange listener then reloads the page once it does.
+        skipWaiting: true
       }
     })
   ],
