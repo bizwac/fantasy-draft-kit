@@ -9,7 +9,7 @@ import { exportPersonalData, importPersonalData, type ImportSummary } from "./pe
 // zero network exactly as before this existed.
 
 const STORAGE_KEY = "fade-signal:cloudSync";
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 300;
 
 export type SyncStatus = "idle" | "syncing" | "error";
 
@@ -240,11 +240,22 @@ let pollVisibilityHandler: (() => void) | null = null;
 export function startAutoPull(intervalMs: number, onPulled?: () => void): () => void {
   stopAutoPull();
 
+  // Skips a tick if the previous pull hasn't resolved yet, so polling
+  // self-paces to the actual round trip instead of piling up
+  // overlapping requests when a network hiccup makes one pull take
+  // longer than intervalMs — the next tick after that one finishes
+  // catches up immediately rather than waiting.
+  let pullInFlight = false;
   function tick() {
-    if (!navigator.onLine) return;
-    void pullBackupFromCloud({ protectNewerDrafts: true }).then((result) => {
-      if (result.ok) onPulled?.();
-    });
+    if (!navigator.onLine || pullInFlight) return;
+    pullInFlight = true;
+    void pullBackupFromCloud({ protectNewerDrafts: true })
+      .then((result) => {
+        if (result.ok) onPulled?.();
+      })
+      .finally(() => {
+        pullInFlight = false;
+      });
   }
 
   tick();

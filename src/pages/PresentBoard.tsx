@@ -14,7 +14,7 @@ import OnClockTimer from "@/components/draftBoard/OnClockTimer";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import Badge from "@/components/player/Badge";
 
-const PULL_INTERVAL_MS = 1000;
+const PULL_INTERVAL_MS = 750;
 
 // A read-only, chrome-free view meant for a second tab/window/device on
 // screen-share while the real management happens elsewhere (this app,
