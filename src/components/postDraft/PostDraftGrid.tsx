@@ -13,12 +13,17 @@ function splitName(name: string): [string, string] {
 export default function PostDraftGrid({
   grid,
   teamNames,
-  myTeamSlot,
+  highlightTeamSlot,
   presentation = false
 }: {
   grid: Grid;
   teamNames: string[];
-  myTeamSlot: number;
+  // Which column gets the accent tint — the Results page passes "my
+  // team" (a fixed personal reference on a now-static grid), while the
+  // Live View passes whichever team is currently on the clock (so a
+  // screen-share viewer can see who's picking at a glance, not just
+  // where the organizer's own team sits).
+  highlightTeamSlot: number;
   // Bigger player-name text with tightened cell padding/line-height, for
   // the Live View (PresentBoard) only, which scrolls this grid inside a
   // fixed-height section rather than shrinking it to fit.
@@ -67,7 +72,7 @@ export default function PostDraftGrid({
                 // pre-composites the same tint against the opaque card
                 // background instead, so it stays solid while stuck.
                 style={
-                  i + 1 === myTeamSlot
+                  i + 1 === highlightTeamSlot
                     ? { backgroundColor: "color-mix(in srgb, var(--accent) 20%, var(--surface-raised))", color: "var(--accent-strong)" }
                     : { backgroundColor: "var(--surface-raised)" }
                 }
@@ -89,7 +94,7 @@ export default function PostDraftGrid({
                   className={[
                     "px-2 border-b border-border align-top print:px-1 print:py-1",
                     presentation ? "py-1" : "py-2",
-                    teamIdx + 1 === myTeamSlot ? "bg-accent/10" : ""
+                    teamIdx + 1 === highlightTeamSlot ? "bg-accent/10" : ""
                   ].join(" ")}
                 >
                   {cell.player ? (

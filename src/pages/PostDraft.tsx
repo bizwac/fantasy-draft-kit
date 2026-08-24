@@ -69,7 +69,7 @@ export default function PostDraft() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-display text-lg font-semibold">Draft Board</h2>
-        <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} />
+        <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} highlightTeamSlot={draft.settings.myDraftSlot} />
       </section>
 
       <section className="flex flex-col gap-3 print:hidden">

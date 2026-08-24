@@ -146,7 +146,12 @@ export default function PresentBoard() {
           now-larger presentation text) to force everything on screen at
           once. */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-        <PostDraftGrid grid={grid} teamNames={draft.settings.teamNames} myTeamSlot={draft.settings.myDraftSlot} presentation />
+        <PostDraftGrid
+          grid={grid}
+          teamNames={draft.settings.teamNames}
+          highlightTeamSlot={onClock?.teamSlot ?? draft.settings.myDraftSlot}
+          presentation
+        />
       </div>
     </div>
   );
