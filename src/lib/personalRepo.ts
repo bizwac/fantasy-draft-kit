@@ -3,6 +3,7 @@ import { db } from "./db";
 import type { Draft, PersonalOverride } from "./types";
 import { loadTimerSettings, saveTimerSettings, type TimerSettings } from "./timerSettings";
 import { loadColumnSettings, saveColumnSettings, type ColumnSettings } from "./columnSettings";
+import { DEFAULT_COLUMN_ORDER, type ColumnKey } from "@/components/draftBoard/playerListColumns";
 import { isRecentlyDeleted, loadTombstones, mergeTombstones, type Tombstone } from "./deletedDrafts";
 
 // Personal rankings/notes/favorites/DND are keyed by playerId and shared
@@ -146,9 +147,15 @@ const DraftSchema = z.object({
 // now. Folding them into the same backup that already syncs drafts
 // means turning the pick timer on for a live draft actually reaches a
 // Live View opened on a different device/browser, instead of needing
-// to be set separately on every screen. Keys mirror the ColumnKey union
-// in playerListColumns.ts.
-const ColumnKeySchema = z.enum(["injury", "adp", "rank", "bye", "rookie", "team", "tier", "value", "draftedBy"]);
+// to be set separately on every screen. Derived from
+// DEFAULT_COLUMN_ORDER (playerListColumns.ts's own list of every
+// ColumnKey) instead of a hand-duplicated literal list — a column added
+// there previously had no way to reach this schema, so any export
+// containing it (i.e. any export at all, since new columns show up in
+// the default order/hidden arrays immediately) failed validation
+// entirely on import with "isn't a valid ... export", not just a
+// missing-column warning.
+const ColumnKeySchema = z.enum(DEFAULT_COLUMN_ORDER as [ColumnKey, ...ColumnKey[]]);
 const TimerSettingsSchema = z.object({
   enabled: z.boolean(),
   durationSeconds: z.number(),
