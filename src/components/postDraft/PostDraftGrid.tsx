@@ -159,6 +159,11 @@ export default function PostDraftGrid({
                     isLastRow && teamIdx === row.length - 1 ? "rounded-br-lg print:rounded-none" : ""
                   ].join(" ")}
                   style={presentation ? { padding: `${calc(4)} ${calc(8)}` } : undefined}
+                  // A truncated/clamped name (single-line ellipsis in
+                  // presentation mode, 2-line clamp elsewhere) hides
+                  // whatever doesn't fit — the title attribute surfaces
+                  // it back on hover without needing a custom tooltip.
+                  title={cell.player ? `${cell.player.position} — ${cell.player.name}` : undefined}
                 >
                   {cell.player ? (
                     <div
