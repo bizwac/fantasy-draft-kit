@@ -170,7 +170,15 @@ export default function PostDraftGrid({
                       className={["flex items-start", presentation ? "" : "gap-1.5"].join(" ")}
                       style={presentation ? { gap: calc(4) } : undefined}
                     >
-                      <div className="flex flex-col items-start gap-0 shrink-0">
+                      {/* Fixed width regardless of scale (32px unscaled) so
+                          the badge ("K"/"D" vs "WR"/"QB") and pick number
+                          (1 vs 3 digits) never shift where the name column
+                          starts — center-aligned within it so shorter
+                          content doesn't look left-stranded. */}
+                      <div
+                        className="flex flex-col items-center gap-0 shrink-0"
+                        style={{ width: presentation ? calc(32) : 32 }}
+                      >
                         <span
                           className={["font-semibold px-1 rounded", presentation ? "" : "text-[10px]"].join(" ")}
                           style={{
