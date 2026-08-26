@@ -10,7 +10,7 @@ import { useFillScale } from "@/lib/useFillScale";
 import { loadTimerSettings } from "@/lib/timerSettings";
 import { useTheme } from "@/lib/useTheme";
 import type { Player } from "@/lib/types";
-import PostDraftGrid from "@/components/postDraft/PostDraftGrid";
+import PostDraftGrid, { presentationUnitWidth } from "@/components/postDraft/PostDraftGrid";
 import OnClockTimer from "@/components/draftBoard/OnClockTimer";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import Badge from "@/components/player/Badge";
@@ -42,10 +42,10 @@ export default function PresentBoard() {
   // mostly blank below it. Deps use pick count and team names rather
   // than `draft`/`grid` directly since those are new object references
   // on every Dexie live-query tick even when nothing visible changed.
-  const { containerRef: gridContainerRef, contentRef: gridContentRef, scale } = useFillScale<HTMLDivElement>([
-    draft?.picks.length,
-    draft?.settings.teamNames.join("|")
-  ]);
+  const { containerRef: gridContainerRef, contentRef: gridContentRef, scale } = useFillScale<HTMLDivElement>(
+    presentationUnitWidth(draft?.settings.teamNames.length ?? 0),
+    [draft?.picks.length, draft?.settings.teamNames.join("|")]
+  );
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -72,12 +72,17 @@ export default function PresentBoard() {
   // pickable as a single window in a share picker or hides the sharer's
   // own meeting controls. A popup opened with toolbar/location/menubar
   // disabled renders as its own chrome-free, non-fullscreen window that
-  // a "share a window" picker sees like any other app window. Sized off
-  // the actual screen (not a fixed 1280x800) so a 14-16 round grid has
-  // as much room as the laptop can give it before needing to scroll.
+  // a "share a window" picker sees like any other app window. Defaults
+  // to a 1080p 16:9 shape (useFillScale grows the grid to fill whatever
+  // window it ends up in, so there's no need to maximize this window —
+  // a consistent, TV-like aspect ratio is more useful than "as big as
+  // possible"), scaled down uniformly if the screen itself is smaller.
   function openPresentationWindow() {
-    const width = Math.min(1600, Math.round(window.screen.availWidth * 0.92));
-    const height = Math.min(1000, Math.round(window.screen.availHeight * 0.92));
+    const targetWidth = 1920;
+    const targetHeight = 1080;
+    const fitScale = Math.min(1, (window.screen.availWidth * 0.92) / targetWidth, (window.screen.availHeight * 0.92) / targetHeight);
+    const width = Math.round(targetWidth * fitScale);
+    const height = Math.round(targetHeight * fitScale);
     const left = Math.max(0, Math.round((window.screen.width - width) / 2));
     const top = Math.max(0, Math.round((window.screen.height - height) / 2));
     window.open(

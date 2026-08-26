@@ -19,6 +19,14 @@ function calc(base: number): string {
   return `calc(var(--present-scale, 1) * ${base}px)`;
 }
 
+// Presentation mode's per-team-column legibility floor, in px at
+// --present-scale 1 — exported so PresentBoard's useFillScale can cap
+// scale analytically at containerWidth / presentationUnitWidth(teamCount)
+// instead of measuring it (which doesn't work — see useFillScale.ts).
+export function presentationUnitWidth(teamCount: number): number {
+  return teamCount * 90 + 40;
+}
+
 export default function PostDraftGrid({
   grid,
   teamNames,
@@ -62,16 +70,22 @@ export default function PostDraftGrid({
           scrolls horizontally instead of squeezing columns further. Print
           resets it to 0 (post-draft-grid-table in index.css) since a
           printed page can't scroll and already goes small/dense on
-          purpose to fit one page. Presentation mode skips the floor
-          entirely instead: it truncates names to one line rather than
-          wrapping them, so there's no mid-word-break risk to floor
-          against, and this is the Live View — nobody driving a screen
-          share can scroll it for the viewers, so every team column
-          actually fitting on screen matters more than a per-column
-          minimum width. */}
+          purpose to fit one page. Presentation mode's floor scales with
+          --present-scale right alongside the font sizes below — team
+          names wrap rather than truncate in the header, so without a
+          floor that grows in lockstep, useFillScale growing the font on
+          a fixed-width column collapses that wrap into one character per
+          line. Scaling both together keeps the wrap pattern the same at
+          any size, and on a narrow phone viewport (--present-scale stuck
+          at 1) this floor is what makes the grid scroll horizontally
+          instead of squeezing columns unreadably thin. */}
       <table
         className="post-draft-grid-table border-collapse w-full table-fixed text-sm print:text-[9px]"
-        style={{ minWidth: presentation ? undefined : teamNames.length * 96 + 40 }}
+        style={{
+          minWidth: presentation
+            ? `calc(var(--present-scale, 1) * ${presentationUnitWidth(teamNames.length)}px)`
+            : teamNames.length * 96 + 40
+        }}
       >
         <thead>
           <tr>
