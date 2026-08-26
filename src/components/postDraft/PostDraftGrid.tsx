@@ -10,6 +10,15 @@ function splitName(name: string): [string, string] {
   return [name.slice(0, spaceIndex), name.slice(spaceIndex + 1)];
 }
 
+// calc(8) -> "calc(var(--present-scale, 1) * 8px)" — reads the scale
+// PresentBoard's useFillScale sets on an ancestor so font-size/padding
+// grow with it live (no re-render needed, since it's a CSS var read via
+// calc()), and falls back to a literal 1 (i.e. the base value) anywhere
+// that variable isn't set.
+function calc(base: number): string {
+  return `calc(var(--present-scale, 1) * ${base}px)`;
+}
+
 export default function PostDraftGrid({
   grid,
   teamNames,
@@ -26,7 +35,11 @@ export default function PostDraftGrid({
   highlightTeamSlot: number;
   // Bigger player-name text with tightened cell padding/line-height, for
   // the Live View (PresentBoard) only, which scrolls this grid inside a
-  // fixed-height section rather than shrinking it to fit.
+  // fixed-height section rather than shrinking it to fit. Also switches
+  // font-size/padding to read the --present-scale CSS variable (via
+  // calc()) that PresentBoard's useFillScale sets on an ancestor, so the
+  // grid grows to fill a TV/projector viewport instead of sitting at
+  // this ipad-tuned size on a much bigger screen.
   presentation?: boolean;
 }) {
   return (
@@ -70,7 +83,10 @@ export default function PostDraftGrid({
                 see the wrapper comment above), so it can't clip these
                 sticky cells' opaque backgrounds to its own rounded
                 corners; rounding the corner cells directly is the fix. */}
-            <th className="sticky left-0 top-0 z-30 w-10 rounded-tl-lg bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:rounded-none print:px-1 print:py-1">
+            <th
+              className="sticky left-0 top-0 z-30 w-10 rounded-tl-lg bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:rounded-none print:px-1 print:py-1"
+              style={presentation ? { width: calc(40), padding: `${calc(8)} ${calc(8)}`, fontSize: calc(12) } : undefined}
+            >
               Rd
             </th>
             {teamNames.map((name, i) => (
@@ -85,11 +101,12 @@ export default function PostDraftGrid({
                 // rows through once it's sticky — color-mix here
                 // pre-composites the same tint against the opaque card
                 // background instead, so it stays solid while stuck.
-                style={
-                  i + 1 === highlightTeamSlot
+                style={{
+                  ...(presentation ? { padding: `${calc(10)} ${calc(8)}`, fontSize: calc(14) } : {}),
+                  ...(i + 1 === highlightTeamSlot
                     ? { backgroundColor: "color-mix(in srgb, var(--accent) 20%, var(--surface-raised))", color: "var(--accent-strong)" }
-                    : { backgroundColor: "var(--surface-raised)" }
-                }
+                    : { backgroundColor: "var(--surface-raised)" })
+                }}
               >
                 {name}
               </th>
@@ -106,6 +123,7 @@ export default function PostDraftGrid({
                   "sticky left-0 z-10 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1",
                   isLastRow ? "rounded-bl-lg print:rounded-none" : ""
                 ].join(" ")}
+                style={presentation ? { padding: `${calc(8)} ${calc(8)}`, fontSize: calc(12) } : undefined}
               >
                 {roundIdx + 1}
               </td>
@@ -114,21 +132,34 @@ export default function PostDraftGrid({
                   key={teamIdx}
                   className={[
                     "px-2 border-b border-border align-top print:px-1 print:py-1",
-                    presentation ? "py-1" : "py-2",
+                    presentation ? "" : "py-2",
                     teamIdx + 1 === highlightTeamSlot ? "bg-accent/10" : "",
                     isLastRow && teamIdx === row.length - 1 ? "rounded-br-lg print:rounded-none" : ""
                   ].join(" ")}
+                  style={presentation ? { padding: `${calc(4)} ${calc(8)}` } : undefined}
                 >
                   {cell.player ? (
-                    <div className={["flex items-start", presentation ? "gap-1" : "gap-1.5"].join(" ")}>
+                    <div
+                      className={["flex items-start", presentation ? "" : "gap-1.5"].join(" ")}
+                      style={presentation ? { gap: calc(4) } : undefined}
+                    >
                       <div className="flex flex-col items-start gap-0 shrink-0">
                         <span
-                          className={["font-semibold px-1 rounded", presentation ? "text-xs" : "text-[10px]"].join(" ")}
-                          style={{ backgroundColor: POSITION_COLOR[cell.player.position], color: POSITION_TEXT_COLOR[cell.player.position] }}
+                          className={["font-semibold px-1 rounded", presentation ? "" : "text-[10px]"].join(" ")}
+                          style={{
+                            backgroundColor: POSITION_COLOR[cell.player.position],
+                            color: POSITION_TEXT_COLOR[cell.player.position],
+                            ...(presentation ? { padding: `0 ${calc(4)}`, fontSize: calc(12) } : {})
+                          }}
                         >
                           {cell.player.position === "DST" ? "D" : cell.player.position}
                         </span>
-                        <span className="text-[10px] text-text-secondary tabular-nums">#{cell.pick?.overall}</span>
+                        <span
+                          className={["text-text-secondary tabular-nums", presentation ? "" : "text-[10px]"].join(" ")}
+                          style={presentation ? { fontSize: calc(10) } : undefined}
+                        >
+                          #{cell.pick?.overall}
+                        </span>
                       </div>
                       {presentation ? (
                         // First and last name each get their own line and
@@ -139,9 +170,15 @@ export default function PostDraftGrid({
                         (() => {
                           const [first, last] = splitName(cell.player.name);
                           return (
-                            <div className="flex flex-col min-w-0 flex-1 gap-1">
-                              <span className="font-medium text-xs leading-tight truncate block">{first}</span>
-                              {last && <span className="font-medium text-xs leading-tight truncate block">{last}</span>}
+                            <div className="flex flex-col min-w-0 flex-1" style={{ gap: calc(4) }}>
+                              <span className="font-medium leading-tight truncate block" style={{ fontSize: calc(12) }}>
+                                {first}
+                              </span>
+                              {last && (
+                                <span className="font-medium leading-tight truncate block" style={{ fontSize: calc(12) }}>
+                                  {last}
+                                </span>
+                              )}
                             </div>
                           );
                         })()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { ThemePreference } from "@/lib/useTheme";
 import { Link, useParams } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { locationForOverallPick, rosterSlotCount } from "@/lib/draftMath";
 import { buildPostDraftGrid } from "@/lib/postDraft";
 import { startAutoPull } from "@/lib/cloudSync";
+import { useFillScale } from "@/lib/useFillScale";
 import { loadTimerSettings } from "@/lib/timerSettings";
 import { useTheme } from "@/lib/useTheme";
 import type { Player } from "@/lib/types";
@@ -34,6 +35,17 @@ export default function PresentBoard() {
   const { preference, setPreference } = useTheme();
 
   useEffect(() => startAutoPull(() => setTimerSettings(loadTimerSettings())), []);
+
+  // Grows the grid's text/padding to fill whatever vertical space a
+  // TV/projector viewport gives it (see useFillScale) — otherwise the
+  // grid stays at its ipad-tuned size and a 1080p/4K screen-share is
+  // mostly blank below it. Deps use pick count and team names rather
+  // than `draft`/`grid` directly since those are new object references
+  // on every Dexie live-query tick even when nothing visible changed.
+  const { containerRef: gridContainerRef, contentRef: gridContentRef, scale } = useFillScale<HTMLDivElement>([
+    draft?.picks.length,
+    draft?.settings.teamNames.join("|")
+  ]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -143,13 +155,18 @@ export default function PresentBoard() {
           than that, instead of shrinking the whole grid (including its
           now-larger presentation text) to force everything on screen at
           once. */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
-        <PostDraftGrid
-          grid={grid}
-          teamNames={draft.settings.teamNames}
-          highlightTeamSlot={onClock?.teamSlot ?? draft.settings.myDraftSlot}
-          presentation
-        />
+      <div ref={gridContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+        {/* useFillScale writes --present-scale onto this node directly
+            (bypassing React) while it converges, then this declarative
+            value takes over on the next render — see the hook. */}
+        <div ref={gridContentRef} style={{ "--present-scale": scale } as CSSProperties}>
+          <PostDraftGrid
+            grid={grid}
+            teamNames={draft.settings.teamNames}
+            highlightTeamSlot={onClock?.teamSlot ?? draft.settings.myDraftSlot}
+            presentation
+          />
+        </div>
       </div>
     </div>
   );
