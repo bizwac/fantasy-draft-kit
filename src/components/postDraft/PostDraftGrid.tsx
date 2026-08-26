@@ -19,12 +19,17 @@ function calc(base: number): string {
   return `calc(var(--present-scale, 1) * ${base}px)`;
 }
 
+// The Rd column only ever holds 1-2 digits, so it gets a narrower fixed
+// width than a team column — every pixel not spent there is a pixel
+// table-fixed's even split hands to the team columns instead.
+const ROUND_COLUMN_WIDTH = 28;
+
 // Presentation mode's per-team-column legibility floor, in px at
 // --present-scale 1 — exported so PresentBoard's useFillScale can cap
 // scale analytically at containerWidth / presentationUnitWidth(teamCount)
 // instead of measuring it (which doesn't work — see useFillScale.ts).
 export function presentationUnitWidth(teamCount: number): number {
-  return teamCount * 90 + 40;
+  return teamCount * 90 + ROUND_COLUMN_WIDTH;
 }
 
 export default function PostDraftGrid({
@@ -84,7 +89,7 @@ export default function PostDraftGrid({
         style={{
           minWidth: presentation
             ? `calc(var(--present-scale, 1) * ${presentationUnitWidth(teamNames.length)}px)`
-            : teamNames.length * 96 + 40
+            : teamNames.length * 96 + ROUND_COLUMN_WIDTH
         }}
       >
         <thead>
@@ -98,8 +103,11 @@ export default function PostDraftGrid({
                 sticky cells' opaque backgrounds to its own rounded
                 corners; rounding the corner cells directly is the fix. */}
             <th
-              className="sticky left-0 top-0 z-30 w-10 rounded-tl-lg bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:rounded-none print:px-1 print:py-1"
-              style={presentation ? { width: calc(40), padding: `${calc(8)} ${calc(8)}`, fontSize: calc(12) } : undefined}
+              className="sticky left-0 top-0 z-30 rounded-tl-lg bg-surface-raised px-1 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:rounded-none print:px-1 print:py-1"
+              style={{
+                width: presentation ? calc(ROUND_COLUMN_WIDTH) : ROUND_COLUMN_WIDTH,
+                ...(presentation ? { padding: `${calc(8)} ${calc(4)}`, fontSize: calc(12) } : {})
+              }}
             >
               Rd
             </th>
@@ -134,10 +142,10 @@ export default function PostDraftGrid({
             <tr key={roundIdx}>
               <td
                 className={[
-                  "sticky left-0 z-10 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1",
+                  "sticky left-0 z-10 bg-surface-raised px-1 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1",
                   isLastRow ? "rounded-bl-lg print:rounded-none" : ""
                 ].join(" ")}
-                style={presentation ? { padding: `${calc(8)} ${calc(8)}`, fontSize: calc(12) } : undefined}
+                style={presentation ? { padding: `${calc(8)} ${calc(4)}`, fontSize: calc(12) } : undefined}
               >
                 {roundIdx + 1}
               </td>
