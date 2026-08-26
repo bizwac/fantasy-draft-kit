@@ -49,23 +49,37 @@ export default function PostDraftGrid({
           scrolls horizontally instead of squeezing columns further. Print
           resets it to 0 (post-draft-grid-table in index.css) since a
           printed page can't scroll and already goes small/dense on
-          purpose to fit one page. */}
+          purpose to fit one page. Presentation mode skips the floor
+          entirely instead: it truncates names to one line rather than
+          wrapping them, so there's no mid-word-break risk to floor
+          against, and this is the Live View — nobody driving a screen
+          share can scroll it for the viewers, so every team column
+          actually fitting on screen matters more than a per-column
+          minimum width. */}
       <table
         className="post-draft-grid-table border-collapse w-full table-fixed text-sm print:text-[9px]"
-        style={{ minWidth: teamNames.length * 96 + 40 }}
+        style={{ minWidth: presentation ? undefined : teamNames.length * 96 + 40 }}
       >
         <thead>
           <tr>
             {/* z-30 (above the header row's z-20 and the body's sticky-left
                 z-10) since this corner is sticky on both axes at once and
-                has to stay on top regardless of scroll direction. */}
-            <th className="sticky left-0 top-0 z-30 w-10 bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:px-1 print:py-1">
+                has to stay on top regardless of scroll direction. The
+                card wrapper deliberately has no overflow set (needed so
+                sticky resolves against the true outer scroll container —
+                see the wrapper comment above), so it can't clip these
+                sticky cells' opaque backgrounds to its own rounded
+                corners; rounding the corner cells directly is the fix. */}
+            <th className="sticky left-0 top-0 z-30 w-10 rounded-tl-lg bg-surface-raised px-2 py-2 text-left text-xs font-semibold text-text-secondary border-b border-r border-border print:static print:rounded-none print:px-1 print:py-1">
               Rd
             </th>
             {teamNames.map((name, i) => (
               <th
                 key={i}
-                className="sticky top-0 z-20 px-2 py-2.5 text-left text-sm font-bold border-b border-border whitespace-normal break-words print:static print:px-1 print:py-1 text-text-primary"
+                className={[
+                  "sticky top-0 z-20 px-2 py-2.5 text-left text-sm font-bold border-b border-border whitespace-normal break-words print:static print:px-1 print:py-1 text-text-primary",
+                  i === teamNames.length - 1 ? "rounded-tr-lg print:rounded-none" : ""
+                ].join(" ")}
                 // A plain bg-accent/20 utility is semi-transparent, which
                 // is fine for a static header but bleeds scrolled-past
                 // rows through once it's sticky — color-mix here
@@ -83,9 +97,16 @@ export default function PostDraftGrid({
           </tr>
         </thead>
         <tbody>
-          {grid.grid.map((row, roundIdx) => (
+          {grid.grid.map((row, roundIdx) => {
+            const isLastRow = roundIdx === grid.grid.length - 1;
+            return (
             <tr key={roundIdx}>
-              <td className="sticky left-0 z-10 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1">
+              <td
+                className={[
+                  "sticky left-0 z-10 bg-surface-raised px-2 py-2 text-xs font-semibold text-text-secondary border-r border-b border-border print:static print:px-1 print:py-1",
+                  isLastRow ? "rounded-bl-lg print:rounded-none" : ""
+                ].join(" ")}
+              >
                 {roundIdx + 1}
               </td>
               {row.map((cell, teamIdx) => (
@@ -94,7 +115,8 @@ export default function PostDraftGrid({
                   className={[
                     "px-2 border-b border-border align-top print:px-1 print:py-1",
                     presentation ? "py-1" : "py-2",
-                    teamIdx + 1 === highlightTeamSlot ? "bg-accent/10" : ""
+                    teamIdx + 1 === highlightTeamSlot ? "bg-accent/10" : "",
+                    isLastRow && teamIdx === row.length - 1 ? "rounded-br-lg print:rounded-none" : ""
                   ].join(" ")}
                 >
                   {cell.player ? (
@@ -104,7 +126,7 @@ export default function PostDraftGrid({
                           className={["font-semibold px-1 rounded", presentation ? "text-xs" : "text-[10px]"].join(" ")}
                           style={{ backgroundColor: POSITION_COLOR[cell.player.position], color: POSITION_TEXT_COLOR[cell.player.position] }}
                         >
-                          {cell.player.position}
+                          {cell.player.position === "DST" ? "D" : cell.player.position}
                         </span>
                         <span className="text-[10px] text-text-secondary tabular-nums">#{cell.pick?.overall}</span>
                       </div>
@@ -135,7 +157,8 @@ export default function PostDraftGrid({
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
